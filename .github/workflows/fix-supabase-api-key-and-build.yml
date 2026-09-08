@@ -34,7 +34,8 @@ jobs:
               print('Supabase publishable key fixed')
           PY
 
-      - name: Commit fix
+      - name: Save fix when possible
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -43,7 +44,7 @@ jobs:
             echo 'No key change to commit'
           else
             git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'
-            git push
+            git push || echo 'Another workflow updated main; APK will still be built from this fixed working tree.'
           fi
 
       - name: Set up Java
