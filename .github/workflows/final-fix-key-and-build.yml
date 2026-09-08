@@ -1,0 +1,82 @@
+name: Final Fix Supabase Key and Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix Supabase key in source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          key = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          pattern = r"SUPABASE_KEY='[^']*'"
+          if not re.search(pattern, s):
+              raise SystemExit('SUPABASE_KEY not found')
+          s = re.sub(pattern, "SUPABASE_KEY='" + key + "'", s, count=1)
+          p.write_text(s, encoding='utf-8')
+          if re.search(pattern, s).group(0) != "SUPABASE_KEY='" + key + "'":
+              raise SystemExit('Key verification failed')
+          print('Source key verified')
+          PY
+
+      - name: Commit corrected source
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then
+            echo 'Source already correct'
+          else
+            git commit -m 'Use verified Supabase publishable key'
+            git push
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+
+      - name: Verify key inside APK
+        shell: bash
+        run: |
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          echo 'APK key verified'
+
+      - name: Upload final APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rihla-thanaweya-final-apk-fixed
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
