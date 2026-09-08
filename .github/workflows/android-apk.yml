@@ -15,22 +15,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify and fix Supabase publishable key
+      - name: Apply full final app configuration
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import base64
+          import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          current = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
-          previous = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicUsw').decode()
-          if previous in s:
-              s = s.replace(previous, current)
-              p.write_text(s, encoding='utf-8')
-          if current not in s:
+          current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
+          tag = '<script src="final-features.js"></script>'
+          if tag not in s:
+              s = s.replace('</body>', tag + '\n</body>')
+          p.write_text(s, encoding='utf-8')
+          if "SUPABASE_KEY='" + current + "'" not in s:
               raise SystemExit('ERROR: Supabase publishable key was not fixed in source')
-          print('Supabase key verified')
+          if tag not in s:
+              raise SystemExit('ERROR: final-features.js was not injected')
+          print('Full final app configuration verified')
           PY
 
       - name: Set up Java
@@ -50,26 +53,21 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Build debug APK
+      - name: Build Full APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
 
-      - name: Verify key inside built APK
+      - name: Verify Full APK
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64
-          s=Path('/tmp/index.html').read_text(encoding='utf-8')
-          current=base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
-          if "SUPABASE_KEY='"+current+"'" not in s:
-              raise SystemExit('ERROR: built APK contains the wrong Supabase key')
-          print('APK Supabase key verification passed')
-          PY
+          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          grep -F 'final-features.js' /tmp/index.html
+          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/final-features.js'
+          echo 'FULL FINAL APK VERIFIED'
 
-      - name: Upload APK
+      - name: Upload Full Final APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-final-fixed-apk
+          name: rihla-thanaweya-full-final-apk
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
