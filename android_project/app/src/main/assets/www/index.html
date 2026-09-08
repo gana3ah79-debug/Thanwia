@@ -121,4 +121,66 @@ renderSubjects();document.getElementById('examDate').value=state.examDate||'';co
   setTimeout(renderSmartDailyPlan,500);
 })();
 </script>
+<script>
+/* RIhla stopwatch completion sound v1 */
+(function(){
+  let audioCtx = null;
+  let lastTime = null;
+  let ringing = false;
+  function unlockAudio(){
+    try{
+      if(!audioCtx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC) return;
+        audioCtx = new AC();
+      }
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+    }catch(e){}
+  }
+  function tone(freq, start, duration, volume){
+    if(!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(start); osc.stop(start + duration + 0.03);
+  }
+  function playCompletionChime(){
+    if(ringing) return;
+    ringing = true;
+    try{
+      unlockAudio();
+      if(audioCtx){
+        const t = audioCtx.currentTime + 0.03;
+        tone(659.25,t,0.24,0.16);
+        tone(783.99,t+0.22,0.24,0.17);
+        tone(987.77,t+0.44,0.28,0.18);
+        tone(1318.51,t+0.70,0.48,0.20);
+      }
+      if(navigator.vibrate) navigator.vibrate([80,60,120]);
+      if(typeof toast === 'function') toast('🎉 أحسنت! انتهت جلسة المذاكرة');
+    }catch(e){}
+    window.setTimeout(function(){ringing=false;},1800);
+  }
+  document.addEventListener('pointerdown',unlockAudio,{passive:true});
+  document.addEventListener('touchstart',unlockAudio,{passive:true});
+  function readTimer(){
+    const el=document.querySelector('.timer-in strong')||document.querySelector('.timer strong');
+    if(!el) return null;
+    const m=String(el.textContent||'').trim().match(/^(\d{1,3}):(\d{2})$/);
+    if(!m) return null;
+    return Number(m[1])*60+Number(m[2]);
+  }
+  window.setInterval(function(){
+    const now=readTimer();
+    if(now===null){lastTime=null;return;}
+    if(lastTime!==null && lastTime>0 && now===0) playCompletionChime();
+    lastTime=now;
+  },200);
+})();
+</script>
 </body></html>
