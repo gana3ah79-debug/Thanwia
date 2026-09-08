@@ -15,6 +15,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify and fix Supabase publishable key
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          old = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbqK0'
+          new = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          if old in s:
+              s = s.replace(old, new)
+              p.write_text(s, encoding='utf-8')
+              print('Corrected Supabase publishable key in APK source')
+          else:
+              print('Supabase key already current or not found')
+          PY
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
