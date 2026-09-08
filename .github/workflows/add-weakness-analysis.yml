@@ -43,3 +43,4 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Add weakness analysis [auto-weakness]"
           git push
+# Trigger the Android build on the patched main branch.
