@@ -1,0 +1,49 @@
+name: Add spaced error review
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[auto-error-review]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add spaced error review
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          css='.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
+          s=s.replace('.error-item:last-child{border:0}', '.error-item:last-child{border:0}'+css, 1)
+          old='<div class="card"><div class="row"><b>📕 دفتر أخطائي</b><span class="pill" id="errorCount">0</span></div><div id="errorLogList" style="margin-top:8px"><div class="muted">لم تسجل أخطاء بعد. أول خطأ فرصة للتعلم.</div></div></div>'
+          new='''<div class="card"><div class="row"><b>📕 دفتر أخطائي</b><span class="pill" id="errorCount">0</span></div><div id="reviewSummary" class="muted" style="margin-top:8px">مراجعة ذكية كل 1، 3، 7 و14 يوم.</div><div id="errorLogList" style="margin-top:8px"><div class="muted">لم تسجل أخطاء بعد. أول خطأ فرصة للتعلم.</div></div></div>'''
+          if 'id="reviewSummary"' not in s:
+              s=s.replace(old,new,1)
+          marker='function renderErrorLog(){'
+          inject='''function getReviewLevel(e){return Number(e.reviewLevel||0);}
+          function getReviewInterval(level){return [1,3,7,14][Math.min(3,Math.max(0,level))];}
+          function getReviewDue(e){const base=new Date(e.lastReviewedAt||e.date||Date.now());const days=getReviewInterval(getReviewLevel(e));return Date.now()-base.getTime()>=days*86400000;}
+          function reviewError(id){const e=(state.errorLog||[]).find(x=>x.id===id);if(!e)return;e.reviewLevel=Math.min(4,getReviewLevel(e)+1);e.lastReviewedAt=new Date().toISOString();e.reviewed=e.reviewLevel>=4;if(e.reviewed)state.errorReviewed=(state.errorReviewed||0)+1;save();renderAnalysis();toast(e.reviewed?'أحسنت! أتقنت الخطأ وأغلقناه من المراجعة 🎉':`تمت المراجعة. المراجعة القادمة بعد ${getReviewInterval(e.reviewLevel)} يوم.`);}
+          function renderSpacedReviewSummary(){const arr=state.errorLog||[],due=arr.filter(e=>!e.reviewed&&getReviewDue(e)).length,done=arr.filter(e=>e.reviewed).length;const box=document.getElementById('reviewSummary');if(box)box.textContent=arr.length?`🔄 ${due} أخطاء مستحقة للمراجعة الآن · ✅ ${done} أخطاء تم إتقانها`: 'مراجعة ذكية كل 1، 3، 7 و14 يوم.';}
+          '''
+          if 'function getReviewLevel(e)' not in s:
+              s=s.replace(marker,inject+marker,1)
+          start=s.find('function renderErrorLog(){')
+          if start>=0:
+              end=s.find('\nfunction renderHome(){',start)
+              if end>start:
+                  fn='''function renderErrorLog(){const box=document.getElementById('errorLogList');if(!box)return;const arr=state.errorLog||[],c=document.getElementById('errorCount');if(c)c.textContent=arr.length;renderSpacedReviewSummary();if(!arr.length){box.innerHTML='<div class="muted">لم تسجل أخطاء بعد. أول خطأ فرصة للتعلم.</div>';return}box.innerHTML=arr.slice(0,8).map(e=>{const level=getReviewLevel(e),due=!e.reviewed&&getReviewDue(e),next=level<4?getReviewInterval(level)+' يوم':'تم الإتقان';return `<div class="error-item"><b>❌ ${escapeHtml(e.subject||'مادة')}</b><div class="small" style="margin-top:5px">${escapeHtml(e.question||'سؤال غير متاح')}</div><div class="muted" style="margin-top:4px">${escapeHtml(e.reason||'خطأ في الإجابة')}</div>${e.reviewed?`<div class="review-done">🏆 تم إتقان هذا الخطأ</div>`:`<div class="${due?'review-due':'muted'}" style="margin-top:8px">${due?'🔔 حان موعد المراجعة الآن':'📅 المراجعة القادمة بعد '+next}</div><button class="btn secondary" style="margin-top:8px;padding:9px" onclick="reviewError('${e.id}')">🔄 راجعت الخطأ</button>`}</div>`}).join('')+(arr.length>8?`<div class="muted" style="padding-top:8px">و${arr.length-8} أخطاء أخرى</div>`:'')}'''
+                  s=s[:start]+fn+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit patched app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Add spaced error review [auto-error-review]"
+          git push
