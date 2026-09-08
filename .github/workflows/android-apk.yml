@@ -15,9 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore complete interface
-        run: unzip -o .build/payload.zip -d android_project/app/src/main/assets/www
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
