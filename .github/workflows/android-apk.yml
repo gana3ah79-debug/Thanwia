@@ -20,16 +20,17 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import base64
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          old = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbqK0'
-          new = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
-          if old in s:
-              s = s.replace(old, new)
+          current = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
+          previous = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicUsw').decode()
+          if previous in s:
+              s = s.replace(previous, current)
               p.write_text(s, encoding='utf-8')
-              print('Corrected Supabase publishable key in APK source')
-          else:
-              print('Supabase key already current or not found')
+          if current not in s:
+              raise SystemExit('ERROR: Supabase publishable key was not fixed in source')
+          print('Supabase key verified')
           PY
 
       - name: Set up Java
@@ -53,8 +54,22 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
 
+      - name: Verify key inside built APK
+        shell: bash
+        run: |
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          s=Path('/tmp/index.html').read_text(encoding='utf-8')
+          current=base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
+          if "SUPABASE_KEY='"+current+"'" not in s:
+              raise SystemExit('ERROR: built APK contains the wrong Supabase key')
+          print('APK Supabase key verification passed')
+          PY
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-debug-apk
+          name: rihla-thanaweya-final-fixed-apk
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
