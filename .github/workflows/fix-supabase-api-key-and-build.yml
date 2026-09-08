@@ -1,5 +1,6 @@
 name: Build Full Final APK
 
+# Full final build pipeline: offline core + online friends/subscriptions + admin-ready app.
 on:
   push:
     branches: [main]
