@@ -1,0 +1,73 @@
+name: Fix Supabase API Key and Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix Supabase publishable key
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          old = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbqK0'
+          new = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          if old in s:
+              s = s.replace(old, new)
+              p.write_text(s, encoding='utf-8')
+              print('Supabase publishable key fixed')
+          elif new in s:
+              print('Supabase publishable key already correct')
+          else:
+              raise SystemExit('Expected Supabase key was not found')
+          PY
+
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then
+            echo 'No key change to commit'
+          else
+            git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'
+            git push
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rihla-thanaweya-fixed-apk
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
