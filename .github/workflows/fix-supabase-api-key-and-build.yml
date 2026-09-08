@@ -1,4 +1,4 @@
-name: Fix Supabase API Key and Build APK
+name: Build Full Final APK
 
 on:
   push:
@@ -9,75 +9,64 @@ permissions:
   contents: write
 
 jobs:
-  fix-and-build:
+  final-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fix and verify Supabase publishable key
+      - name: Apply final app configuration
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('android_project/app/src/main/assets/www/index.html')
-          s = p.read_text(encoding='utf-8')
-          new = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          pattern = r"SUPABASE_KEY='[^']*'"
-          if not re.search(pattern, s):
-              raise SystemExit('SUPABASE_KEY declaration was not found')
-          s2 = re.sub(pattern, "SUPABASE_KEY='" + new + "'", s, count=1)
-          p.write_text(s2, encoding='utf-8')
-          found = re.search(pattern, s2).group(0)
-          if found != "SUPABASE_KEY='" + new + "'":
-              raise SystemExit('Supabase key verification failed')
-          print('Supabase publishable key verified')
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
+          tag='<script src="final-features.js"></script>'
+          if tag not in s:
+              s=s.replace('</body>',tag+'\n</body>')
+          p.write_text(s,encoding='utf-8')
+          if "SUPABASE_KEY='"+key+"'" not in s: raise SystemExit('key verification failed')
+          if tag not in s: raise SystemExit('final features not injected')
           PY
 
-      - name: Save fix when possible
+      - name: Commit final source when changed
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add android_project/app/src/main/assets/www/index.html
-          if git diff --cached --quiet; then
-            echo 'No key change to commit'
-          else
-            git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'
-            git push || echo 'Another workflow updated main; APK will still be built from this fixed working tree.'
-          fi
+          if git diff --cached --quiet; then echo 'No source change'; else git commit -m 'Enable full final app features' && git push || true; fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
-
-      - name: Build debug APK
+      - name: Build Full APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
-
-      - name: Verify key inside APK
+      - name: Verify final APK
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          echo 'APK Supabase key verified'
-
-      - name: Upload APK
+          grep -F 'final-features.js' /tmp/index.html
+          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/final-features.js'
+          echo 'FULL FINAL APK VERIFIED'
+      - name: Upload Full Final APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-final-fixed-apk
+          name: rihla-thanaweya-full-final-apk
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
