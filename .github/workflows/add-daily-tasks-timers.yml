@@ -1,0 +1,149 @@
+name: Add Daily Tasks and Subject Timers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  daily-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add daily tasks and timers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- RIHLADAILYTOOLS -->'
+          if marker in s:
+              print('Daily tools already installed')
+              raise SystemExit(0)
+          css = r'''
+<style id="rihla-daily-tools-css">
+.daily-tools{margin-bottom:14px}.daily-task-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #edf0f5}.daily-task-row:last-child{border-bottom:0}.daily-task-main{min-width:0}.daily-task-name{font-weight:900;font-size:14px}.daily-task-note{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.daily-task-actions{display:flex;gap:6px;align-items:center}.mini-btn{padding:9px 10px;border-radius:12px;background:#eef4ff;color:#246bff;font-weight:800;font-size:11px}.mini-btn.done{background:#eafaf3;color:#15956b}.timer-chip{min-width:74px;text-align:center;padding:8px 7px;border-radius:12px;background:#102a4b;color:#fff;font-weight:900;font-size:12px}.timer-chip.warning{background:#ffad32;color:#3c2500;animation:rihlaPulse .75s infinite}.timer-chip.finished{background:#27c98b}.daily-add{display:grid;grid-template-columns:1fr 90px;gap:8px;margin-top:12px}.daily-add input{min-width:0}.daily-timer-panel{margin-top:12px;padding:13px;border-radius:18px;background:linear-gradient(145deg,#071d3a,#1268c7);color:#fff;display:none}.daily-timer-panel.show{display:block}.daily-timer-time{text-align:center;font-size:40px;font-weight:900;letter-spacing:1px;margin:8px 0}.daily-timer-label{text-align:center;color:#d7e9ff;font-size:12px}.daily-timer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.bell-btn{position:relative}.bell-btn.ringing{animation:rihlaBell .35s infinite alternate}.daily-notice{margin-top:10px;padding:10px 12px;border-radius:14px;background:#eef4ff;color:#24579b;font-size:12px;font-weight:700;display:none}.daily-notice.show{display:block}@keyframes rihlaPulse{50%{transform:scale(1.04)}}@keyframes rihlaBell{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}
+@media(max-width:380px){.daily-task-actions{flex-wrap:wrap;justify-content:flex-end}.daily-add{grid-template-columns:1fr}.daily-timer-time{font-size:34px}}
+</style>
+'''
+          js = r'''
+<script id="rihla-daily-tools-js">
+(function(){
+  'use strict';
+  const KEY='rihla_daily_tasks_v1';
+  const pad=n=>String(n).padStart(2,'0');
+  const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}};
+  const save=x=>localStorage.setItem(KEY,JSON.stringify(x));
+  let db=load(), activeTimer=null, audioCtx=null;
+  function today(){return db[todayKey()]||(db[todayKey()]={tasks:[]})}
+  function notify(msg,warning){
+    let n=document.getElementById('rihlaDailyNotice'); if(!n)return;
+    n.textContent=msg; n.classList.add('show');
+    if(warning) n.style.background='#fff4d9';
+    setTimeout(()=>n.classList.remove('show'),4500);
+    try{ if(navigator.vibrate) navigator.vibrate(warning?[120,80,120]:[60]); }catch(e){}
+  }
+  function bell(){
+    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.0001,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.18,audioCtx.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.38);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.4)}catch(e){}
+  }
+  function fmt(sec){return pad(Math.floor(sec/60))+':'+pad(sec%60)}
+  function stopTimer(finished){
+    if(!activeTimer)return;
+    clearInterval(activeTimer.interval); const t=activeTimer; activeTimer=null;
+    if(t.panel){t.panel.classList.remove('show');t.time.textContent='00:00'}
+    if(finished){bell();notify('🎉 انتهى وقت مذاكرة '+t.name+' — أحسنت!',false); t.task.done=true; save(db); render()}
+  }
+  function startTimer(task,minutes,panel){
+    stopTimer(false); let left=Math.max(1,Math.round(minutes*60));
+    const time=panel.querySelector('.daily-timer-time'); const label=panel.querySelector('.daily-timer-label');
+    panel.classList.add('show'); time.textContent=fmt(left); label.textContent='مذاكرة: '+task.name;
+    activeTimer={task,name:task.name,interval:null,panel,time};
+    activeTimer.interval=setInterval(()=>{
+      left--; time.textContent=fmt(Math.max(0,left));
+      if(left===60){bell();notify('🔔 متبقي دقيقة واحدة في '+task.name,false); panel.querySelector('.bell-btn').classList.add('ringing')}
+      if(left<=10&&left>0){panel.querySelector('.bell-btn').classList.add('ringing')}
+      if(left<=0)stopTimer(true);
+    },1000);
+  }
+  function render(){
+    const box=document.getElementById('rihlaDailyTasks'); if(!box)return;
+    const data=today();
+    box.innerHTML='';
+    data.tasks.forEach((t,i)=>{
+      const row=document.createElement('div'); row.className='daily-task-row';
+      const main=document.createElement('div');main.className='daily-task-main';
+      main.innerHTML='<div class="daily-task-name">'+escapeHtml(t.name)+'</div><div class="daily-task-note">'+(t.subject?escapeHtml(t.subject)+' • ':'')+(t.done?'تم الإنجاز':'لم تُنجز بعد')+'</div>';
+      const actions=document.createElement('div');actions.className='daily-task-actions';
+      const mins=document.createElement('input');mins.className='input';mins.type='number';mins.min='1';mins.max='180';mins.value=t.minutes||25;mins.style.cssText='width:68px;margin:0;padding:8px';mins.title='دقائق المذاكرة';
+      const start=document.createElement('button');start.className='mini-btn';start.textContent='▶ '+(t.done?'مراجعة':'ابدأ');
+      start.onclick=()=>{const panel=document.getElementById('rihlaDailyTimer');startTimer(t,Number(mins.value)||25,panel)};
+      const done=document.createElement('button');done.className='mini-btn done';done.textContent=t.done?'✓ تم':'تم';done.onclick=()=>{t.done=!t.done;save(db);render();notify(t.done?'✅ تم تسجيل المهمة':'↩️ أُعيدت المهمة لقائمة اليوم',false)};
+      actions.append(mins,start,done);row.append(main,actions);box.append(row);
+    });
+    if(!data.tasks.length){const e=document.createElement('div');e.className='muted';e.textContent='لا توجد مهام لليوم. أضف أول مهمة من الأسفل.';box.append(e)}
+  }
+  function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+  function build(){
+    if(document.getElementById('rihlaDailyTools'))return;
+    const host=document.createElement('section');host.id='rihlaDailyTools';host.className='card daily-tools';
+    host.innerHTML='<div class="row"><div><h3 style="margin:0">📋 مهام اليوم</h3><div class="muted" style="margin-top:4px">اكتب مهامك وحدد وقت كل مادة</div></div><span class="pill">ديناميكي 3D</span></div><div id="rihlaDailyTasks"></div><div class="daily-add"><input id="rihlaTaskInput" class="input" placeholder="مثال: حل أسئلة الفيزياء"/><input id="rihlaMinutesInput" class="input" type="number" min="1" max="180" value="25" placeholder="دقيقة"/></div><button id="rihlaAddTask" class="btn" style="margin-top:8px">＋ إضافة مهمة اليوم</button><div id="rihlaDailyTimer" class="daily-timer-panel"><div class="daily-timer-label">المؤقت</div><div class="daily-timer-time">00:00</div><div class="daily-timer-actions"><button class="btn secondary bell-btn">🔔 الجرس</button><button class="btn danger" id="rihlaStopTimer">إيقاف</button></div></div><div id="rihlaDailyNotice" class="daily-notice"></div>';
+    const target=document.querySelector('.daily-plan')||document.querySelector('.content')||document.querySelector('.app');
+    if(target)target.parentNode.insertBefore(host,target.nextSibling); else document.body.appendChild(host);
+    document.getElementById('rihlaAddTask').onclick=()=>{const input=document.getElementById('rihlaTaskInput'),m=document.getElementById('rihlaMinutesInput');const name=input.value.trim();if(!name){notify('✍️ اكتب مهمة اليوم أولاً',true);input.focus();return}today().tasks.push({name,minutes:Number(m.value)||25,done:false,created:Date.now()});save(db);input.value='';render();notify('✅ تمت إضافة المهمة لجدول اليوم',false)};
+    document.getElementById('rihlaStopTimer').onclick=()=>stopTimer(false);
+    render();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
+  setInterval(()=>{const k=todayKey();if(!db[k]){db[k]={tasks:[]};save(db);render()}},60000);
+})();
+</script>
+'''
+          inject = marker + css + js
+          if '</body>' in s:
+              s=s.replace('</body>',inject+'</body>',1)
+          else:
+              s += inject
+          p.write_text(s,encoding='utf-8')
+          print('Daily tasks/timers injected')
+          PY
+
+      - name: Commit source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add daily task table and subject timers'; git push; fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rihla-thanaweya-daily-tools-apk
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
