@@ -15,23 +15,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fix Supabase publishable key
+      - name: Fix and verify Supabase publishable key
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          new = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          new = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           pattern = r"SUPABASE_KEY='[^']*'"
           if not re.search(pattern, s):
               raise SystemExit('SUPABASE_KEY declaration was not found')
           s2 = re.sub(pattern, "SUPABASE_KEY='" + new + "'", s, count=1)
-          if s2 == s:
-              print('Supabase publishable key already correct')
-          else:
-              p.write_text(s2, encoding='utf-8')
-              print('Supabase publishable key fixed')
+          p.write_text(s2, encoding='utf-8')
+          found = re.search(pattern, s2).group(0)
+          if found != "SUPABASE_KEY='" + new + "'":
+              raise SystemExit('Supabase key verification failed')
+          print('Supabase publishable key verified')
           PY
 
       - name: Save fix when possible
@@ -68,8 +69,15 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
 
+      - name: Verify key inside APK
+        shell: bash
+        run: |
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          echo 'APK Supabase key verified'
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-fixed-apk
+          name: rihla-thanaweya-final-fixed-apk
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
