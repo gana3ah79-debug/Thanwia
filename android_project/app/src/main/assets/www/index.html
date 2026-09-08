@@ -30,9 +30,12 @@
 <div class="top"><h1>نجهز رحلتك 🎯</h1><p>بيانات بسيطة عشان نبني لك خطة مناسبة.</p></div>
 <div class="content">
 <div class="card"><label>اسمك</label><input id="name" class="input" placeholder="مثال: أحمد"></div>
+<div class="card"><label>الصف</label><input class="input" value="الثالث الثانوي" disabled></div>
+<div class="card"><label>الشعبة</label><select id="track" class="input" onchange="changeTrack()"><option value="علوم">علمي علوم</option><option value="رياضة">علمي رياضة</option><option value="أدبي">أدبي</option></select><p class="muted">المواد ستتغير تلقائيًا حسب الشعبة.</p></div>
 <div class="card"><label>موعد أول امتحان</label><input id="examDate" class="input" type="date"></div>
 <div class="card"><label>الوقت المتاح يوميًا</label><input id="hours" class="input" type="number" min="1" max="12" value="6"></div>
-<div class="card"><b>اختر موادك</b><p class="muted">يمكنك تعديلها لاحقًا.</p><div id="subjectGrid" class="grid"></div></div>
+<div class="card"><b>المواد الأساسية المضافة للمجموع</b><p class="muted">هذه هي مواد الصف الثالث الصحيحة حسب شعبتك.</p><div id="subjectGrid" class="grid"></div></div>
+<div class="card"><b>مواد النجاح والرسوب</b><p class="muted">لا تضاف للمجموع، لكنها مواد أساسية للنجاح: التربية الدينية، اللغة الأجنبية الثانية، التربية الوطنية.</p><div id="commonSubjectGrid" class="grid"></div></div>
 <button class="btn" onclick="finishSetup()">إنشاء خطتي الذكية ✨</button>
 </div>
 </section>
@@ -147,11 +150,17 @@ const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let realtimeLobby=null, realtimeInvite=null, realtimeChallenge=null, leaderboardTimer=null, myPresenceId=localStorage.getItem("rihlaPresenceId")||crypto.randomUUID();
 localStorage.setItem("rihlaPresenceId",myPresenceId);
 let friendCode=myPresenceId.slice(0,6).toUpperCase();
-const subjects=[
-['📐','الرياضيات'],['⚡','الفيزياء'],['🧪','الكيمياء'],['🧬','الأحياء'],
-['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['🏛️','التاريخ'],['🌍','الجغرافيا'],['🧠','الفلسفة والمنطق']
-];
-let state=JSON.parse(localStorage.getItem('rihlaState')||'null')||{name:'',examDate:'',hours:6,selected:['الرياضيات','الفيزياء','الكيمياء','اللغة العربية'],studied:0,sessions:0,streak:0,progress:{},quizScore:0};
+const subjectSets={
+'علوم':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['🧬','الأحياء'],['🧪','الكيمياء'],['⚡','الفيزياء']],
+'رياضة':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['📐','الرياضيات'],['🧪','الكيمياء'],['⚡','الفيزياء']],
+'أدبي':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['🏛️','التاريخ'],['🌍','الجغرافيا'],['📊','الإحصاء']]
+};
+const commonSubjects=[['🕌','التربية الدينية'],['🗣️','اللغة الأجنبية الثانية'],['🇪🇬','التربية الوطنية']];
+let subjects=[];
+function refreshSubjects(){const track=state.track||'رياضة';subjects=[...(subjectSets[track]||subjectSets['رياضة']),...commonSubjects];}
+let state=JSON.parse(localStorage.getItem('rihlaState')||'null')||{name:'',track:'رياضة',examDate:'',hours:6,selected:['الرياضيات','الفيزياء','الكيمياء','اللغة العربية','اللغة الإنجليزية'],studied:0,sessions:0,streak:0,progress:{},quizScore:0};
+state.track=state.track||'رياضة';
+refreshSubjects();
 let timer=null, seconds=1500, mode='مذاكرة', qIndex=0, score=0;
 let authUser=null;
 async function initAuth(){
@@ -180,13 +189,30 @@ function show(id){
  document.querySelectorAll('.nav button[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
  if(id==='home')renderHome(); if(id==='quizzes'){initAIQuizUI();renderAIQuiz();} if(id==='friends'){initRealtime();document.getElementById('myFriendCode').textContent=friendCode;renderRealtimeFriends();} if(id==='plan')renderPlan(); if(id==='analysis')renderAnalysis(); if(id==='achievements')renderAchievements(); if(id==='notifications')renderNotifications(); if(id==='quizzes')renderQuizzes();
 }
+function renderSubjectGroup(boxId,list){
+ const box=document.getElementById(boxId);if(!box)return;box.innerHTML='';
+ list.forEach(([i,n])=>{const b=document.createElement('button');b.className='subject '+(state.selected.includes(n)?'selected':'');b.innerHTML=`<span class="ico">${i}</span><b>${n}</b><small class="muted">${state.selected.includes(n)?'✓ مختارة':'اضغط للاختيار'}</small>`;b.onclick=()=>{state.selected=state.selected.includes(n)?state.selected.filter(x=>x!==n):[...state.selected,n];save();renderSubjects()};box.appendChild(b)})
+}
 function renderSubjects(){
- const box=document.getElementById('subjectGrid');box.innerHTML='';
- subjects.forEach(([i,n])=>{const b=document.createElement('button');b.className='subject '+(state.selected.includes(n)?'selected':'');b.innerHTML=`<span class="ico">${i}</span><b>${n}</b><small class="muted">${state.selected.includes(n)?'✓ مختارة':'اضغط للاختيار'}</small>`;b.onclick=()=>{state.selected=state.selected.includes(n)?state.selected.filter(x=>x!==n):[...state.selected,n];renderSubjects()};box.appendChild(b)})
+ refreshSubjects();
+ renderSubjectGroup('subjectGrid',subjectSets[state.track]||subjectSets['رياضة']);
+ renderSubjectGroup('commonSubjectGrid',commonSubjects);
+ const track=document.getElementById('track');if(track)track.value=state.track;
+}
+function changeTrack(){
+ const next=document.getElementById('track').value;
+ const commonSelected=state.selected.filter(n=>commonSubjects.some(x=>x[1]===n));
+ state.track=next;
+ const mainNames=(subjectSets[next]||[]).map(x=>x[1]);
+ state.selected=[...mainNames,...commonSelected];
+ refreshSubjects();save();renderSubjects();
+ toast(`تم اختيار مواد ${next==='علوم'?'علمي علوم':next==='رياضة'?'علمي رياضة':'أدبي'} تلقائيًا ✅`);
 }
 function finishSetup(){
  state.name=document.getElementById('name').value.trim()||'الطالب';
+ state.track=document.getElementById('track').value||state.track||'رياضة';
  state.examDate=document.getElementById('examDate').value; state.hours=+document.getElementById('hours').value||6;
+ refreshSubjects();
  if(!state.selected.length){toast('اختر مادة واحدة على الأقل');return}
  generatePlan();save();show('home');toast('تم إنشاء خطتك الذكية ✨')
 }
@@ -399,8 +425,10 @@ function startFriendChallenge(){show('friends');toast('اختار صديقًا �
 function updateChallengeTimer(){document.getElementById('challengeTimer').textContent=String(Math.floor(challengeSeconds/60)).padStart(2,'0')+':'+String(challengeSeconds%60).padStart(2,'0');document.getElementById('challengeProgress').style.width=((1500-challengeSeconds)/1500*100)+'%'}
 
 document.getElementById('examDate').value=state.examDate||'';
+const trackEl=document.getElementById('track');if(trackEl)trackEl.value=state.track||'رياضة';
+renderSubjects();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
-renderSubjects();updateTimer();
+updateTimer();
 initAuth();
 if(state.name)initRealtime();
 setInterval(()=>{if(state.name)renderLeaderboard()},30000);
