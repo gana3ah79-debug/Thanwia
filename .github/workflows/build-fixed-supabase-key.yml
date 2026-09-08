@@ -1,0 +1,41 @@
+name: Build APK with verified Supabase key
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Supabase key in build workspace
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          s2=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
+          if s2==s:
+              raise SystemExit('SUPABASE_KEY was not found')
+          p.write_text(s2,encoding='utf-8')
+          print('Verified key patched into APK build workspace')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+      - run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rihla-thanaweya-verified-supabase-apk
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
