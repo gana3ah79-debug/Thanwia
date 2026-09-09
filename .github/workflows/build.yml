@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
 
+# Rebuild marker: latest payment submission, login centering/colors, and admin visibility fixes.
 jobs:
   build-apk:
     runs-on: ubuntu-latest
