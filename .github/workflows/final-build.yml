@@ -1,0 +1,72 @@
+name: Final Thanwia APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare web assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('android_project/app/src/main/assets/www')
+          p=root/'index.html'
+          s=p.read_text(encoding='utf-8')
+          for f in ['login-screen-fix.js','auth-theme.js','login-polish.js','admin-entry.js','admin-visibility-fix.js']:
+              s=s.replace(f'<script src="{f}"></script>','')
+          s=re.sub(r'<script id=["\']rihla-color-themes-js["\']>.*?</script>\s*','',s,flags=re.S|re.I)
+          tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
+          for f in tags:
+              tag=f'<script src="{f}"></script>'
+              if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          admin=root/'admin.html'
+          a=admin.read_text(encoding='utf-8')
+          tag='<script src="admin-payment-bridge.js"></script>'
+          if tag not in a:a=a.replace('</body>',tag+'\n</body>',1)
+          admin.write_text(a,encoding='utf-8')
+          assert 'rihla-color-themes-js' not in s
+          assert 'payment-methods.js' in s and 'home-controls-fix.js' in s
+          assert 'admin-payment-bridge.js' in a
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+      - name: Build
+        working-directory: android_project
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify final APK
+        shell: bash
+        run: |
+          set -e
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/www/index.html >/tmp/index.html
+          unzip -p "$APK" assets/www/admin.html >/tmp/admin.html
+          ! grep -F 'rihla-color-themes-js' /tmp/index.html
+          ! grep -F 'login-screen-fix.js' /tmp/index.html
+          grep -F 'payment-methods.js' /tmp/index.html
+          grep -F 'home-controls-fix.js' /tmp/index.html
+          grep -F 'admin-payment-bridge.js' /tmp/admin.html
+          grep -F 'rihlaNotifyDialog' <(unzip -p "$APK" assets/www/feature-fixes.js)
+          grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Thanwia-APK-FINAL
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
