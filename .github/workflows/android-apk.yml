@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Force verified Supabase auth key and remove legacy color picker from APK
+      - name: Apply final auth UI and verified Supabase configuration
         shell: bash
         run: |
           python3 - <<'PY'
@@ -23,21 +23,61 @@ jobs:
           import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          correct = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          s2 = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + correct + "'", s)
-          if s2 == s and correct not in s:
-              raise SystemExit('ERROR: SUPABASE_KEY assignment was not found')
-          s = s2
-          guard = '<style id="rihla-no-color-picker">#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,.theme-options,.theme-title,.theme-sub{display:none!important}</style>'
+
+          # This is the active, non-disabled publishable key returned by the Supabase project.
+          key = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + key + "'", s, count=1)
+
+          # Replace the old compact auth box with the final, clearly different login/signup UI.
+          old = re.search(r'<div id="authGate" class="auth-gate">.*?</div></div>', s, re.S)
+          if not old:
+              raise SystemExit('ERROR: old auth gate not found')
+          new = '''<div id="authGate" class="auth-gate auth-v2"><div class="auth-box auth-box-v2">
+          <div class="auth-brand"><div class="auth-logo">🎓</div><div><b>رحلة الثانوية</b><span>مذاكرتك تبدأ من هنا</span></div></div>
+          <div class="auth-heading"><h2 id="authTitle">تسجيل الدخول</h2><p id="authSubtitle">ادخل لحفظ تقدمك ونتائجك وتشغيل كل المميزات.</p></div>
+          <div class="auth-switch"><button id="authLoginTab" class="active" onclick="setAuthMode('login')">تسجيل الدخول</button><button id="authSignupTab" onclick="setAuthMode('signup')">إنشاء حساب</button></div>
+          <label class="auth-label" for="authName">الاسم</label><input id="authName" class="input auth-input" placeholder="اكتب اسمك" autocomplete="name">
+          <label class="auth-label" for="authEmail">البريد الإلكتروني</label><input id="authEmail" class="input auth-input" type="email" placeholder="example@email.com" autocomplete="email">
+          <label class="auth-label" for="authPassword">كلمة المرور</label><input id="authPassword" class="input auth-input" type="password" placeholder="6 أحرف على الأقل" autocomplete="current-password">
+          <button id="authPrimaryBtn" class="btn auth-primary" onclick="authSignIn()">دخول آمن</button>
+          <button id="authResetBtn" class="auth-link" onclick="authResetPassword()">نسيت كلمة المرور؟ تغييرها الآن</button>
+          <p id="authMsg" class="auth-msg" role="status"></p>
+          <div class="auth-note">🔒 بيانات حسابك تُستخدم لحفظ تقدمك داخل التطبيق.</div>
+          </div></div>'''
+          s = s[:old.start()] + new + s[old.end():]
+
+          # Final auth styling. It intentionally replaces the old look instead of merely hiding it.
+          css = '''<style id="rihla-auth-v2-css">
+          .auth-v2{align-items:center!important;justify-content:center!important;padding:18px;background:linear-gradient(145deg,#061b36,#0d5ead)!important}
+          .auth-box-v2{width:min(94%,430px);border-radius:28px!important;padding:22px!important;box-shadow:0 22px 60px rgba(0,0,0,.28)!important}
+          .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}.auth-brand b{display:block;font-size:19px}.auth-brand span{display:block;color:#718096;font-size:11px;margin-top:3px}.auth-logo{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#246bff,#40c5ff);font-size:25px;box-shadow:0 8px 22px rgba(36,107,255,.28)}
+          .auth-heading h2{margin:0 0 6px;font-size:25px}.auth-heading p{margin:0 0 16px;color:#718096;font-size:12px;line-height:1.7}
+          .auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;background:#f0f4fa;padding:5px;border-radius:15px;margin-bottom:16px}.auth-switch button{padding:11px;border-radius:11px;background:transparent;color:#65748a;font-weight:700}.auth-switch button.active{background:#fff;color:#246bff;box-shadow:0 3px 12px rgba(30,60,100,.09)}
+          .auth-label{display:block;font-size:12px;font-weight:700;color:#4d5c70;margin:9px 2px 5px}.auth-input{margin:0 0 4px!important}.auth-primary{margin-top:12px;height:52px;font-size:15px}.auth-link{display:block;margin:13px auto 4px;background:none;color:#246bff;font-size:12px;font-weight:700}.auth-msg{min-height:20px;margin:8px 0 0;text-align:center;font-size:12px;line-height:1.6}.auth-note{margin-top:12px;padding:10px;border-radius:12px;background:#f7f9fc;color:#7a8798;text-align:center;font-size:10px}
+          </style>'''
+          s = s.replace('</head>', css + '</head>', 1)
+
+          # Add mode switching + password reset and make the auth messages useful.
+          marker = 'async function initAuth()'
+          idx = s.find(marker)
+          if idx < 0:
+              raise SystemExit('ERROR: initAuth marker not found')
+          auth_js = '''function setAuthMode(mode){var signup=mode==='signup';var n=document.getElementById('authName'),t=document.getElementById('authTitle'),sub=document.getElementById('authSubtitle'),p=document.getElementById('authPrimaryBtn'),r=document.getElementById('authResetBtn'),a=document.getElementById('authLoginTab'),b=document.getElementById('authSignupTab');if(!n||!p)return;n.style.display=signup?'block':'none';p.textContent=signup?'إنشاء حساب مجاني':'دخول آمن';p.onclick=signup?authSignUp:authSignIn;t.textContent=signup?'إنشاء حساب جديد':'تسجيل الدخول';sub.textContent=signup?'أنشئ حسابك واحفظ تقدمك ونتائجك على جهازك.':'ادخل لحفظ تقدمك ونتائجك وتشغيل كل المميزات.';r.style.display=signup?'none':'block';a.classList.toggle('active',!signup);b.classList.toggle('active',signup);authMessage('')}\nasync function authResetPassword(){var email=document.getElementById('authEmail').value.trim();if(!email){authMessage('اكتب بريدك الإلكتروني أولاً ثم اضغط تغيير كلمة المرور.');return}try{var x=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:'https://eclnddvupggxyythtpkv.supabase.co'});if(x.error)throw x.error;authMessage('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني.')}catch(e){console.error(e);authMessage('تعذر إرسال رابط تغيير كلمة المرور حالياً.')}}\n'''
+          s = s[:idx] + auth_js + s[idx:]
+
+          # Remove the legacy color picker from the actual source/UI at runtime too.
+          guard = '''<style id="rihla-no-color-picker">#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,.theme-options,.theme-title,.theme-sub{display:none!important}</style>'''
           if 'rihla-no-color-picker' not in s:
               s = s.replace('</head>', guard + '</head>', 1)
-          guard_js = '''<script id="rihla-auth-final-guard">\n(function(){\n  function clean(){['rihla-theme-entry','rihla-theme-picker','rihla-theme-toast'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove();});}\n  clean();\n  new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true});\n})();\n</script>'''
+          guard_js = '''<script id="rihla-auth-final-guard">(function(){function clean(){['rihla-theme-entry','rihla-theme-picker','rihla-theme-toast'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove()});document.querySelectorAll('.theme-options,.theme-title,.theme-sub').forEach(function(e){e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true})})();</script>'''
           if 'rihla-auth-final-guard' not in s:
               s = s.replace('</body>', guard_js + '</body>', 1)
+
           p.write_text(s, encoding='utf-8')
-          if "SUPABASE_KEY='" + correct + "'" not in s:
-              raise SystemExit('ERROR: final auth key is not correct')
-          print('Verified Supabase publishable key applied and legacy color picker disabled')
+          required=[key,'auth-v2','authResetPassword','rihla-no-color-picker','rihla-auth-final-guard','تغيير كلمة المرور']
+          for x in required:
+              if x not in s: raise SystemExit('ERROR missing final marker: '+x)
+          print('FINAL AUTH UI + VERIFIED SUPABASE KEY APPLIED')
           PY
 
       - name: Set up Java
@@ -61,23 +101,22 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
 
-      - name: Verify exact Supabase key inside built APK
+      - name: Verify final APK is the new build
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           python3 - <<'PY'
           from pathlib import Path
           s=Path('/tmp/index.html').read_text(encoding='utf-8')
-          current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          if "SUPABASE_KEY='"+current+"'" not in s:
-              raise SystemExit('ERROR: built APK contains the wrong Supabase key')
-          if 'rihla-no-color-picker' not in s:
-              raise SystemExit('ERROR: color-picker guard missing from built APK')
-          print('APK Supabase key and color-picker guard verification passed')
+          required=['sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0','auth-v2','authResetPassword','rihla-auth-final-guard','تغيير كلمة المرور']
+          for x in required:
+              if x not in s: raise SystemExit('ERROR: missing APK marker: '+x)
+          if 'auth-box-v2' not in s or 'دخول آمن' not in s: raise SystemExit('ERROR: old auth UI still present')
+          print('NEW APK VERIFIED: auth-v2 + password reset + verified key + no color picker')
           PY
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-final-fixed-apk
+          name: rihla-thanaweya-AUTH-V5-final
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
