@@ -1,0 +1,14 @@
+/* Final mobile login polish */
+#authGate.login-polished{align-items:center!important;justify-content:center!important;padding:16px!important;overflow:auto!important}
+#authGate.login-polished .auth-box{width:min(460px,calc(100vw - 32px))!important;max-height:calc(100vh - 32px)!important;overflow:auto!important;margin:0 auto!important;border-radius:28px!important;padding:22px 18px 20px!important;text-align:center!important;box-shadow:0 24px 70px rgba(0,0,0,.30)!important}
+#authGate.login-polished .auth-box h2{font-size:32px!important;margin:4px 0 8px!important;color:#102a4b!important}
+#authGate.login-polished .auth-box>p.muted{font-size:13px!important;line-height:1.8!important;margin:0 0 10px!important}
+#authGate.login-polished .auth-box .input{height:56px!important;margin:8px 0!important;border:1.5px solid #dce5f1!important;border-radius:17px!important;padding:0 16px!important;font-size:16px!important;text-align:right!important;outline:none!important}
+#authGate.login-polished .auth-box .btn{min-height:56px!important;border-radius:17px!important;font-size:17px!important;box-shadow:0 8px 18px rgba(36,107,255,.20)!important}
+#authGate.login-polished .login-theme-area{margin:8px 0 13px!important;padding:10px 8px 8px!important;background:#f7faff!important;border:1px solid #e5edf8!important;border-radius:20px!important}
+#authGate.login-polished .login-theme-title{font-size:12px!important;color:#64748b!important;font-weight:700!important;margin-bottom:9px!important}
+#authGate.login-polished .login-theme-row{display:flex!important;direction:rtl!important;justify-content:center!important;gap:10px!important;flex-wrap:nowrap!important}
+#authGate.login-polished .login-theme-dot{width:42px!important;height:42px!important;min-width:42px!important;padding:4px!important;border-radius:50%!important;background:#fff!important;border:2px solid #e0e7f0!important;box-shadow:0 4px 10px rgba(20,50,90,.10)!important;display:grid!important;place-items:center!important}
+#authGate.login-polished .login-theme-dot span{display:block!important;width:27px!important;height:27px!important;border-radius:50%!important}
+#authGate.login-polished .login-theme-dot.active{border-color:#246bff!important;box-shadow:0 0 0 3px rgba(36,107,255,.15),0 5px 13px rgba(20,50,90,.15)!important;transform:scale(1.06)}
+@media(max-height:650px){#authGate.login-polished .auth-box{padding:14px!important}.login-theme-area{margin:4px 0 7px!important}.login-theme-dot{width:36px!important;height:36px!important;min-width:36px!important}.login-theme-dot span{width:23px!important;height:23px!important}#authGate.login-polished .auth-box h2{font-size:27px!important}}
