@@ -16,6 +16,22 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Inject navigation controls
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script src="navigation.js"></script>'
+          if tag not in s:
+              s = s.replace('</body>', tag + '\n</body>', 1)
+          p.write_text(s, encoding='utf-8')
+          if tag not in s:
+              raise SystemExit('navigation.js injection failed')
+          print('Navigation controls injected')
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -36,6 +52,14 @@ jobs:
       - name: Build debug APK
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify navigation controls inside APK
+        shell: bash
+        run: |
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          grep -F 'navigation.js' /tmp/index.html
+          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/navigation.js'
+          echo 'Navigation controls verified in APK'
 
       - name: Verify APK exists
         run: test -f android_project/app/build/outputs/apk/debug/app-debug.apk
