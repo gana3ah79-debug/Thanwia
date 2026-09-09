@@ -28,7 +28,7 @@ jobs:
               s=s.replace(f'<script src="{f}"></script>','')
           s=re.sub(r'<script id=["\']rihla-color-themes-js["\']>.*?</script>\s*','',s,flags=re.S|re.I)
           s=re.sub(r'(\.review-due\{[^}]*\}\.review-done\{[^}]*\})+', r'\1', s)
-          tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js','post-login-fix.js']
+          tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js','post-login-fix.js','home-runtime-guard.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
@@ -42,6 +42,7 @@ jobs:
           assert s.count('async function authSignIn')==1
           assert 'rihla-color-themes-js' not in s
           assert 'post-login-fix.js' in s
+          assert 'home-runtime-guard.js' in s
           assert 'admin-payment-bridge.js' in a
           assert s.count('.review-due{')==1 and s.count('.review-done{')==1
           PY
@@ -89,15 +90,18 @@ jobs:
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html >/tmp/index.html
           unzip -p "$APK" assets/www/admin.html >/tmp/admin.html
+          unzip -p "$APK" assets/www/home-runtime-guard.js >/tmp/home-runtime-guard.js
           ! grep -F 'rihla-color-themes-js' /tmp/index.html
           ! grep -F 'login-screen-fix.js' /tmp/index.html
           grep -F 'payment-methods.js' /tmp/index.html
           grep -F 'home-controls-fix.js' /tmp/index.html
           grep -F 'post-login-fix.js' /tmp/index.html
+          grep -F 'home-runtime-guard.js' /tmp/index.html
           grep -F 'admin-payment-bridge.js' /tmp/admin.html
           grep -F 'rihlaNotifyDialog' <(unzip -p "$APK" assets/www/feature-fixes.js)
           grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'Final guard for the post-login state' <(unzip -p "$APK" assets/www/post-login-fix.js)
+          grep -F 'Final runtime guard' /tmp/home-runtime-guard.js
           ! grep -F 'async async function authSignIn' /tmp/index.html
           test "$(grep -o 'async function authSignIn' /tmp/index.html | wc -l)" -eq 1
           test "$(grep -o '\.review-due{' /tmp/index.html | wc -l)" -eq 1
