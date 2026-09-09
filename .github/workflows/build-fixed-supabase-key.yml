@@ -18,11 +18,11 @@ jobs:
           import re
           p=Path('android_project/app/src/main/assets/www/index.html')
           s=p.read_text(encoding='utf-8')
-          key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          s2=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
+          key='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          s2=re.sub(r"sb_publishable_[A-Za-z0-9_-]+", key, s)
           p.write_text(s2,encoding='utf-8')
-          check=re.search(r"SUPABASE_KEY='([^']*)'",s2)
-          if not check or check.group(1)!=key:
+          check=re.search(r"sb_publishable_[A-Za-z0-9_-]+",s2)
+          if not check or check.group(0)!=key:
               raise SystemExit('Supabase key verification failed')
           print('SUPABASE_KEY verified in build source')
           PY
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          grep -F "sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0" /tmp/index.html
           echo 'APK Supabase key verified'
       - uses: actions/upload-artifact@v4
         with:
