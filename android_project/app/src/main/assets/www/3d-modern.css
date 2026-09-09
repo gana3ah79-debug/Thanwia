@@ -1,35 +1,31 @@
-/* Silver / Gray modern theme */
-:root{--bg:#17191d;--bg2:#22262b;--card:#2b3036;--card2:#343a41;--accent:#d7dbe0;--accent2:#aeb5bd;--line:#59616a;--text:#f7f8fa;--muted:#c2c7cd;--good:#70d6a1;--bad:#ff7f91;--shadow:rgba(0,0,0,.42)}
-html,body{background:radial-gradient(circle at 50% -10%,#424951 0,#252a30 36%,#15171a 100%)!important;color:var(--text)!important}
+/* Approved Gold / Graphite / Silver UI palette */
+:root{--bg:#F7F8FA;--bg2:#E0E3E7;--card:#F3F5F7;--card2:#E0E3E7;--primary:#2D3748;--primary2:#3F5563;--accent:#D4AE57;--accent2:#B8860B;--line:#C9CDD1;--text:#26323A;--muted:#5F6B73;--good:#22A06B;--bad:#E76F6F;--shadow:rgba(35,45,55,.18)}
+html,body{background:linear-gradient(160deg,#F7F8FA,#E0E3E7 52%,#EEF1F4)!important;color:var(--text)!important}
 body,.app{color:var(--text)!important}
-.top,.hero{background:linear-gradient(145deg,#4b525a,#292e34)!important;color:#fff!important;border-color:#6a737c!important;box-shadow:0 12px 28px var(--shadow),inset 2px 2px 5px rgba(255,255,255,.12),inset -4px -5px 9px rgba(0,0,0,.3)!important}
-.card,.subject,.stat,.skill-box,.badge,.list-item,.panel,.question-card{background:linear-gradient(145deg,#353b42,#252a30)!important;color:var(--text)!important;border:1px solid #505861!important;box-shadow:0 10px 22px rgba(0,0,0,.25),inset 1px 1px 3px rgba(255,255,255,.06)!important}
-h1,h2,h3,h4,strong,b,label,.title,.name{color:#fff!important}
-p,small,.muted,.hint,.description{color:#d0d4d9!important}
-.btn,button{background:linear-gradient(145deg,#f1f3f5,#aeb5bc)!important;color:#20242a!important;border:1px solid #e2e5e8!important;font-weight:900!important;box-shadow:inset 2px 2px 5px rgba(255,255,255,.8),inset -4px -5px 8px rgba(70,76,82,.28),0 8px 18px rgba(0,0,0,.25)!important}
-.btn:hover,button:hover{filter:brightness(1.06)}
-.btn.secondary{background:linear-gradient(145deg,#59616a,#3b4249)!important;color:#fff!important;border-color:#707982!important}
-.input,.answer,input,textarea,select{background:#20242a!important;color:#f7f8fa!important;border:1px solid #626a73!important}
-.answer.correct{background:linear-gradient(145deg,#244b3a,#1c332a)!important;color:#eafff4!important;border-color:#5bb88a!important}
-.answer.wrong{background:linear-gradient(145deg,#512d35,#382329)!important;color:#fff0f2!important;border-color:#d96b7c!important}
-.nav{background:rgba(34,38,43,.96)!important;border-color:#555d65!important}
-.nav button{color:#e3e6e9!important}
-.pill,.tab{background:linear-gradient(145deg,#4b535b,#30363d)!important;color:#f4f5f6!important;border:1px solid #68717a!important}
-.progress{background:#3d444b!important}.progress i{background:linear-gradient(90deg,#eef1f4,#9fa7af)!important}
-.auth-gate{background:radial-gradient(circle at 50% 0,#69717a,transparent 42%),linear-gradient(145deg,#292e34,#17191d)!important}
-.auth-box,.auth-box-v2{background:linear-gradient(145deg,#3a4047,#24292f)!important;color:#fff!important;border:1px solid #626a73!important;box-shadow:0 20px 45px rgba(0,0,0,.4)!important}
-.auth-box-v2 *{color:#f7f8fa!important}.auth-box-v2 input{background:#1f2328!important;color:#fff!important;border-color:#666e77!important}.auth-switch{background:#292e34!important}.auth-switch button.active{background:linear-gradient(145deg,#f1f3f5,#b6bdc4)!important;color:#20242a!important}.auth-note{background:#30363c!important;color:#d8dce0!important}
-#rihlaPageClose{background:linear-gradient(145deg,#f2f4f6,#aeb5bc)!important;color:#20242a!important}
-#rihlaExitApp{background:linear-gradient(145deg,#737b84,#444b53)!important;color:#fff!important}
-.rihla-light body,.rihla-light .app{background:linear-gradient(160deg,#eef1f4,#d9dde1 50%,#f5f6f7)!important;color:#24282d!important}
-.rihla-light .card,.rihla-light .subject,.rihla-light .stat,.rihla-light .skill-box,.rihla-light .badge,.rihla-light .list-item,.rihla-light .panel,.rihla-light .question-card{background:linear-gradient(145deg,#ffffff,#e5e8eb)!important;color:#24282d!important;border-color:#c4c9ce!important}
-.rihla-light h1,.rihla-light h2,.rihla-light h3,.rihla-light h4,.rihla-light strong,.rihla-light b,.rihla-light label,.rihla-light .title,.rihla-light .name{color:#252a30!important}
-.rihla-light p,.rihla-light small,.rihla-light .muted,.rihla-light .hint,.rihla-light .description{color:#555d65!important}
-.rihla-light .top,.rihla-light .hero{background:linear-gradient(145deg,#aeb5bc,#737b84)!important;color:#fff!important}
-.rihla-light .nav{background:#f3f5f6!important;border-color:#c5cbd0!important}.rihla-light .nav button{color:#424a52!important}
-.rihla-light .input,.rihla-light .answer,.rihla-light input,.rihla-light textarea,.rihla-light select{background:#fafbfc!important;color:#252a30!important;border-color:#b8bec4!important}
-.rihla-light .btn,.rihla-light button{background:linear-gradient(145deg,#ffffff,#cbd0d5)!important;color:#252a30!important;border-color:#dce0e4!important}.rihla-light .btn.secondary{background:linear-gradient(145deg,#8b939b,#69717a)!important;color:#fff!important}
-.rihla-light .pill,.rihla-light .tab{background:#e1e5e8!important;color:#414951!important;border-color:#c2c8ce!important}
-.rihla-light .progress{background:#d3d8dc!important}.rihla-light .progress i{background:linear-gradient(90deg,#747c84,#c6cbd0)!important}
-.rihla-light .auth-gate{background:radial-gradient(circle at 50% 0,#d4d9de,transparent 42%),linear-gradient(145deg,#eef1f4,#d8dde1)!important}.rihla-light .auth-box,.rihla-light .auth-box-v2{background:linear-gradient(145deg,#fff,#e3e7ea)!important;color:#252a30!important}.rihla-light .auth-box-v2 *{color:#252a30!important}.rihla-light .auth-box-v2 input{background:#f8f9fa!important;color:#252a30!important;border-color:#b7bdc3!important}.rihla-light .auth-switch{background:#e1e5e8!important}.rihla-light .auth-switch button.active{background:#fff!important;color:#343a40!important}.rihla-light .auth-note{background:#e8ebee!important;color:#505860!important}
-#rihlaPageClose,#rihlaExitApp{border-radius:16px!important}
+.top,.hero,.onboard{background:linear-gradient(145deg,#6B7280,#2D3748)!important;color:#fff!important;border:1px solid #7C858E!important;box-shadow:0 12px 28px rgba(35,45,55,.2),inset 2px 2px 5px rgba(255,255,255,.22),inset -4px -5px 9px rgba(0,0,0,.28)!important}
+.card,.daily-plan,.subject,.stat,.skill-box,.badge,.challenge-card,.modern-datetime,.sheet,.celebrate-box,.list-item,.panel,.question-card{background:linear-gradient(145deg,#F8F9FA,#E0E3E7)!important;color:var(--text)!important;border:1px solid #C9CDD1!important;border-radius:20px!important;box-shadow:0 9px 22px rgba(35,45,55,.12),inset 1px 1px 3px rgba(255,255,255,.9)!important}
+h1,h2,h3,h4,strong,b,label,.title,.name,.hero-title{color:#26323A!important}
+p,small,.muted,.hint,.description,.sub,.desc{color:#5F6B73!important}
+.btn,.nav .plus,.tab.active{background:linear-gradient(145deg,#FFFFFF,#CBD0D5)!important;color:#26323A!important;border:1px solid #DDE1E5!important;font-weight:900!important;box-shadow:inset 2px 2px 5px rgba(255,255,255,.9),inset -4px -5px 8px rgba(70,76,82,.2),0 8px 18px rgba(35,45,55,.16)!important}
+.btn:hover,.nav .plus:hover,.tab.active:hover{filter:brightness(1.03)}
+.btn.green{background:linear-gradient(145deg,#39B982,#19865C)!important;color:#fff!important;border-color:#58C997!important}
+.btn.danger{background:linear-gradient(145deg,#EF8585,#C95461)!important;color:#fff!important}
+.btn.secondary,.pill,.tab{background:linear-gradient(145deg,#5B6872,#3F4C56)!important;color:#fff!important;border:1px solid #75818A!important}
+.subject.selected{border-color:#B8860B!important;box-shadow:0 0 0 2px rgba(184,134,11,.16),0 12px 25px rgba(35,45,55,.16)!important}
+.input,input,textarea,select{background:#FFFFFF!important;color:#26323A!important;border:1px solid #B8BEC4!important;border-radius:14px!important}.input::placeholder,input::placeholder,textarea::placeholder{color:#879198!important}.input:focus,input:focus,textarea:focus,select:focus{border-color:#B8860B!important;outline:none;box-shadow:0 0 0 3px rgba(184,134,11,.12)!important}
+.answer{background:linear-gradient(145deg,#F8F9FA,#E5E8EB)!important;color:#26323A!important;border:1px solid #C9CDD1!important}.answer.correct{background:linear-gradient(145deg,#E8F7F0,#CFECDD)!important;color:#176B4A!important;border-color:#6BC79D!important}.answer.wrong{background:linear-gradient(145deg,#FCEBEC,#F4D2D5)!important;color:#9F3E49!important;border-color:#E58A94!important}
+.progress{background:#D2D7DC!important;border:1px solid #C1C7CC!important}.progress i{background:linear-gradient(90deg,#6B7280,#D4AE57)!important;box-shadow:0 0 10px rgba(184,134,11,.2)}
+.nav{background:rgba(247,248,250,.97)!important;border-top:1px solid #C9CDD1!important;box-shadow:0 -8px 22px rgba(35,45,55,.12)!important}.nav button{color:#5F6B73!important}.nav button.active{color:#2D3748!important}
+.icon-btn,#rihlaThemeToggle{background:linear-gradient(145deg,#FFFFFF,#D9DEE2)!important;color:#26323A!important;border:1px solid #C7CDD2!important;box-shadow:inset 2px 2px 5px rgba(255,255,255,.9),inset -3px -4px 7px rgba(70,76,82,.16),0 7px 15px rgba(35,45,55,.14)!important}
+#rihlaPageClose{background:linear-gradient(145deg,#6B7280,#3F4C56)!important;color:#fff!important}
+#rihlaExitApp{background:linear-gradient(145deg,#6B7280,#3F4C56)!important;color:#fff!important}
+.auth-gate{background:linear-gradient(160deg,#F7F8FA,#D9DEE2)!important;color:#26323A!important}.auth-box,.auth-box-v2{background:linear-gradient(145deg,#FFFFFF,#E1E5E8)!important;color:#26323A!important;border:1px solid #C9CDD1!important;box-shadow:0 20px 45px rgba(35,45,55,.18)!important}.auth-box-v2 *{color:#26323A!important}.auth-box-v2 input{background:#fff!important;color:#26323A!important;border-color:#B8BEC4!important}.auth-switch{background:#E0E3E7!important}.auth-switch button.active{background:linear-gradient(145deg,#FFFFFF,#CBD0D5)!important;color:#2D3748!important}.auth-note{background:#E6E9EC!important;color:#5F6B73!important}
+.toast{background:linear-gradient(145deg,#3F4C56,#2D3748)!important;color:#fff!important}
+/* Dark mode uses the same identity */
+.rihla-light body,.rihla-light .app{background:linear-gradient(160deg,#F7F8FA,#E0E3E7 52%,#EEF1F4)!important;color:#26323A!important}
+.rihla-light .card,.rihla-light .daily-plan,.rihla-light .stat,.rihla-light .subject,.rihla-light .badge,.rihla-light .skill-box,.rihla-light .challenge-card,.rihla-light .sheet,.rihla-light .list-item,.rihla-light .panel,.rihla-light .question-card{background:linear-gradient(145deg,#F8F9FA,#E0E3E7)!important;color:#26323A!important;border-color:#C9CDD1!important}
+.rihla-light h1,.rihla-light h2,.rihla-light h3,.rihla-light h4,.rihla-light strong,.rihla-light b,.rihla-light label,.rihla-light .title,.rihla-light .name{color:#26323A!important}.rihla-light p,.rihla-light small,.rihla-light .muted,.rihla-light .hint,.rihla-light .description{color:#5F6B73!important}
+.rihla-light .top,.rihla-light .hero,.rihla-light .onboard{background:linear-gradient(145deg,#6B7280,#2D3748)!important;color:#fff!important}.rihla-light .nav{background:#F7F8FA!important;border-color:#C9CDD1!important}.rihla-light .nav button{color:#5F6B73!important}.rihla-light .nav button.active{color:#2D3748!important}
+.rihla-light .input,.rihla-light .answer,.rihla-light input,.rihla-light textarea,.rihla-light select{background:#fff!important;color:#26323A!important;border-color:#B8BEC4!important}.rihla-light .btn,.rihla-light button{background:linear-gradient(145deg,#fff,#CBD0D5)!important;color:#26323A!important;border-color:#DDE1E5!important}.rihla-light .btn.secondary{background:linear-gradient(145deg,#5B6872,#3F4C56)!important;color:#fff!important}.rihla-light .pill,.rihla-light .tab{background:#E0E3E7!important;color:#3F4C56!important;border-color:#C2C8CE!important}.rihla-light .progress{background:#D2D7DC!important}.rihla-light .progress i{background:linear-gradient(90deg,#6B7280,#D4AE57)!important}
+.rihla-light .auth-gate{background:linear-gradient(160deg,#F7F8FA,#D9DEE2)!important}.rihla-light .auth-box,.rihla-light .auth-box-v2{background:linear-gradient(145deg,#fff,#E1E5E8)!important;color:#26323A!important}.rihla-light .auth-box-v2 *{color:#26323A!important}.rihla-light .auth-box-v2 input{background:#fff!important;color:#26323A!important}.rihla-light .auth-switch{background:#E0E3E7!important}.rihla-light .auth-switch button.active{background:#fff!important;color:#2D3748!important}.rihla-light .auth-note{background:#E6E9EC!important;color:#5F6B73!important}
+#rihlaPageClose{display:none!important}
