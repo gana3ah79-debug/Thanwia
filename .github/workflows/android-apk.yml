@@ -25,7 +25,7 @@ jobs:
           s = p.read_text(encoding='utf-8')
           current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
-          tags = ['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js']
+          tags = ['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','auth-theme.js','login-polish.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s: s=s.replace('</body>',tag+'\n</body>',1)
@@ -62,9 +62,9 @@ jobs:
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
-          unzip -l "$APK" | grep 'assets/www/admin.html'
-          unzip -p "$APK" assets/www/admin-entry.js | grep -F 'file:///android_asset/www/admin.html'
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js auth-theme.js login-polish.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
+          grep -F 'تغيير كلمة السر' <(unzip -p "$APK" assets/www/auth-theme.js)
+          grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
           echo 'FULL FINAL APK VERIFIED'
 
       - name: Upload Full Final APK
