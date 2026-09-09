@@ -1,0 +1,8 @@
+(function(){
+'use strict';
+const EMAIL='hamadanagy1979@gmail.com',URL='file:///android_asset/www/admin.html';
+function authVisible(){const a=document.getElementById('authGate');return !!a&&getComputedStyle(a).display!=='none'}
+async function user(){try{if(window.supabaseClient?.auth?.getUser)return (await window.supabaseClient.auth.getUser())?.data?.user||null}catch(e){}try{if(window.supabase?.createClient){const c=window.supabase.createClient('https://eclnddvupggxyythtpkv.supabase.co','sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbqK0');return (await c.auth.getUser())?.data?.user||null}}catch(e){}return null}
+async function tick(){if(authVisible()){document.getElementById('adminHomeEntry')?.remove();return}const u=await user(),ok=String(u?.email||'').toLowerCase()===EMAIL;document.getElementById('adminEntry')?.remove();if(!ok){document.getElementById('adminHomeEntry')?.remove();return}const host=document.querySelector('#home .content');if(!host)return;let box=document.getElementById('adminHomeEntry');if(!box){box=document.createElement('div');box.id='adminHomeEntry';box.className='final-panel';box.style.cssText='margin:0 0 14px;background:#fff;border:1px solid #dbe5f2';box.innerHTML='<div class="row"><div><b>🛠️ لوحة الإدارة</b><div class="muted">إدارة الاشتراكات وطلبات الدفع وحساب المدير</div></div><button type="button" class="mini-btn" id="openAdminPanel">فتح اللوحة</button></div>';host.insertBefore(box,host.firstChild);box.querySelector('#openAdminPanel').onclick=()=>location.href=URL}box.style.setProperty('display','block','important')}
+setTimeout(tick,700);setInterval(tick,1500);new MutationObserver(()=>setTimeout(tick,50)).observe(document.documentElement,{childList:true,subtree:true})
+})();
