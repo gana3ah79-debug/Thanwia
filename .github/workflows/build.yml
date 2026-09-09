@@ -16,26 +16,30 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Inject navigation and login polish
+      - name: Inject final app fixes
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
+          current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
           tags = [
-              '<link rel="stylesheet" href="login-polish.css">',
-              '<script src="login-polish.js"></script>',
-              '<script src="navigation.js"></script>'
+              '<script src="final-features.js"></script>',
+              '<script src="payment-methods.js"></script>',
+              '<script src="admin-entry.js"></script>',
+              '<script src="ui-fixes.js"></script>'
           ]
           for tag in tags:
               if tag not in s:
-                  s = s.replace('</head>', tag + '\n</head>', 1) if tag.startswith('<link') else s.replace('</body>', tag + '\n</body>', 1)
+                  s = s.replace('</body>', tag + '\n</body>', 1)
           p.write_text(s, encoding='utf-8')
+          assert "SUPABASE_KEY='" + current + "'" in s
           for tag in tags:
-              if tag not in s:
-                  raise SystemExit(f'injection failed: {tag}')
-          print('Navigation and login polish injected')
+              assert tag in s
+          print('Final payment, back, exit and re-login fixes injected')
           PY
 
       - name: Set up Java 17
@@ -59,18 +63,14 @@ jobs:
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify UI files inside APK
+      - name: Verify final fixes inside APK
         shell: bash
         run: |
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          grep -F 'navigation.js' /tmp/index.html
-          grep -F 'login-polish.js' /tmp/index.html
-          grep -F 'login-polish.css' /tmp/index.html
-          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep -E 'assets/www/(navigation.js|login-polish.js|login-polish.css)'
-          echo 'UI files verified in APK'
-
-      - name: Verify APK exists
-        run: test -f android_project/app/build/outputs/apk/debug/app-debug.apk
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/www/index.html > /tmp/index.html
+          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
+          echo 'FINAL APK VERIFIED WITH PAYMENT, BACK, EXIT, RE-LOGIN AND ADMIN FIXES'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
