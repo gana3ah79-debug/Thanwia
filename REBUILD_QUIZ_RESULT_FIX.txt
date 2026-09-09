@@ -1,0 +1,1 @@
+Rebuild required: activate latest quiz explanation and final result UI fixes. 2026-09-09
