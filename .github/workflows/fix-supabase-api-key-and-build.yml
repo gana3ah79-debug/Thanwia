@@ -21,16 +21,15 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('android_project/app/src/main/assets/www/index.html')
-          s = p.read_text(encoding='utf-8')
-          new = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          pattern = r"SUPABASE_KEY='[^']*'"
-          if not re.search(pattern, s):
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          new='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          pattern=r"SUPABASE_KEY='[^']*'"
+          if not re.search(pattern,s):
               raise SystemExit('SUPABASE_KEY declaration was not found')
-          s2 = re.sub(pattern, "SUPABASE_KEY='" + new + "'", s, count=1)
-          p.write_text(s2, encoding='utf-8')
-          found = re.search(pattern, s2).group(0)
-          if found != "SUPABASE_KEY='" + new + "'":
+          s2=re.sub(pattern,"SUPABASE_KEY='"+new+"'",s,count=1)
+          p.write_text(s2,encoding='utf-8')
+          if re.search(pattern,s2).group(0)!="SUPABASE_KEY='"+new+"'":
               raise SystemExit('Supabase key verification failed')
           print('Supabase publishable key verified')
           PY
@@ -41,12 +40,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add android_project/app/src/main/assets/www/index.html
-          if git diff --cached --quiet; then
-            echo 'No key change to commit'
-          else
-            git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'
-            git push || echo 'Another workflow updated main; APK will still be built from this fixed working tree.'
-          fi
+          if git diff --cached --quiet; then echo 'No key change to commit'; else git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'; git push || echo 'Another workflow updated main; APK will still be built from this fixed working tree.'; fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -73,7 +67,7 @@ jobs:
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
+          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'" /tmp/index.html
           echo 'APK Supabase key verified'
 
       - name: Upload APK
