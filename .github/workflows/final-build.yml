@@ -109,3 +109,5 @@ jobs:
           name: Thanwia-APK-FINAL
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+# Trigger a clean verified final build after the login syntax fix.
