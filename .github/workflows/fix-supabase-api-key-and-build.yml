@@ -1,12 +1,12 @@
 name: Fix Supabase API Key and Build APK
 
+# Disabled on normal pushes so this legacy fixer cannot overwrite the current
+# application source with an outdated API key. Run manually only when needed.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   fix-and-build:
@@ -15,63 +15,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fix and verify Supabase publishable key
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('android_project/app/src/main/assets/www/index.html')
-          s=p.read_text(encoding='utf-8')
-          new='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
-          pattern=r"SUPABASE_KEY='[^']*'"
-          if not re.search(pattern,s):
-              raise SystemExit('SUPABASE_KEY declaration was not found')
-          s2=re.sub(pattern,"SUPABASE_KEY='"+new+"'",s,count=1)
-          p.write_text(s2,encoding='utf-8')
-          if re.search(pattern,s2).group(0)!="SUPABASE_KEY='"+new+"'":
-              raise SystemExit('Supabase key verification failed')
-          print('Supabase publishable key verified')
-          PY
-
-      - name: Save fix when possible
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add android_project/app/src/main/assets/www/index.html
-          if git diff --cached --quiet; then echo 'No key change to commit'; else git commit -m 'Fix Supabase publishable API key [auto-supabase-key]'; git push || echo 'Another workflow updated main; APK will still be built from this fixed working tree.'; fi
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10'
-
-      - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
-        working-directory: android_project
-
-      - name: Verify key inside APK
-        shell: bash
-        run: |
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'" /tmp/index.html
-          echo 'APK Supabase key verified'
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: rihla-thanaweya-final-fixed-apk
-          path: android_project/app/build/outputs/apk/debug/app-debug.apk
+      - name: Build using the canonical Android APK workflow configuration
+        run: echo 'Legacy fixer is manual-only; use android-apk.yml for the current build.'
