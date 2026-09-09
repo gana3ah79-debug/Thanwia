@@ -1,0 +1,1 @@
+Admin login fix: bundled admin.html now uses direct Supabase Auth REST and no external CDN.
