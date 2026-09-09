@@ -1,49 +1,16 @@
 name: Build APK with correct Supabase key
+
+# Obsolete duplicate workflow disabled. The canonical android-apk.yml is the only
+# automatic APK build and uses the verified current Supabase publishable key.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+
 permissions:
   contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch and verify Supabase publishable key
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('android_project/app/src/main/assets/www/index.html')
-          s=p.read_text(encoding='utf-8')
-          key='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
-          s2=re.sub(r"sb_publishable_[A-Za-z0-9_-]+", key, s)
-          p.write_text(s2,encoding='utf-8')
-          check=re.search(r"sb_publishable_[A-Za-z0-9_-]+",s2)
-          if not check or check.group(0)!=key:
-              raise SystemExit('Supabase key verification failed')
-          print('SUPABASE_KEY verified in build source')
-          PY
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10'
-      - run: gradle --no-daemon :app:assembleDebug
-        working-directory: android_project
-      - name: Verify key inside APK
-        shell: bash
-        run: |
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          grep -F "sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0" /tmp/index.html
-          echo 'APK Supabase key verified'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rihla-thanaweya-final-fixed-apk
-          path: android_project/app/build/outputs/apk/debug/app-debug.apk
+      - run: echo 'Obsolete duplicate build disabled; use android-apk.yml.'
