@@ -1,5 +1,5 @@
 (function(){'use strict';
-const ADMIN_URL='https://cdn.jsdelivr.net/gh/gana3ah79-debug/Thanwia@cf3e920c0175f188956b04d57703ce51c3b6ee6e/admin/index.html';
+const ADMIN_URL='file:///android_asset/www/admin.html';
 function add(){
  if(document.getElementById('adminEntry'))return;
  const style=document.createElement('style');style.textContent='#adminEntry{position:fixed;top:10px;left:10px;z-index:9999;background:#fff;border:1px solid #dbe5f2;border-radius:14px;padding:7px 10px;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:12px}#adminEntry button{background:#246bff;color:#fff;border:0;border-radius:10px;padding:8px 11px;font-weight:700}';document.head.appendChild(style);
