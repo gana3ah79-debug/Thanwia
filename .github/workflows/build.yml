@@ -16,20 +16,24 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Inject navigation controls
+      - name: Inject navigation and login theme controls
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          tag = '<script src="navigation.js"></script>'
-          if tag not in s:
-              s = s.replace('</body>', tag + '\n</body>', 1)
+          tags = [
+              '<script src="navigation.js"></script>',
+              '<script src="auth-theme.js"></script>'
+          ]
+          for tag in tags:
+              if tag not in s:
+                  s = s.replace('</body>', tag + '\n</body>', 1)
+              if tag not in s:
+                  raise SystemExit(f'{tag} injection failed')
           p.write_text(s, encoding='utf-8')
-          if tag not in s:
-              raise SystemExit('navigation.js injection failed')
-          print('Navigation controls injected')
+          print('Navigation and login theme controls injected')
           PY
 
       - name: Set up Java 17
@@ -53,13 +57,15 @@ jobs:
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify navigation controls inside APK
+      - name: Verify navigation and login theme controls inside APK
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           grep -F 'navigation.js' /tmp/index.html
+          grep -F 'auth-theme.js' /tmp/index.html
           unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/navigation.js'
-          echo 'Navigation controls verified in APK'
+          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/auth-theme.js'
+          echo 'Navigation and login theme controls verified in APK'
 
       - name: Verify APK exists
         run: test -f android_project/app/build/outputs/apk/debug/app-debug.apk
