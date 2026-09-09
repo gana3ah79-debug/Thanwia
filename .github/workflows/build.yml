@@ -11,67 +11,50 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Inject final app fixes
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('android_project/app/src/main/assets/www/index.html')
-          s = p.read_text(encoding='utf-8')
-          current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
-          tags = [
-              '<script src="final-features.js"></script>',
-              '<script src="payment-methods.js"></script>',
-              '<script src="admin-entry.js"></script>',
-              '<script src="ui-fixes.js"></script>'
-          ]
-          for tag in tags:
-              if tag not in s:
-                  s = s.replace('</body>', tag + '\n</body>', 1)
-          p.write_text(s, encoding='utf-8')
-          assert "SUPABASE_KEY='" + current + "'" in s
-          for tag in tags:
-              assert tag in s
-          print('Final payment, back, exit and re-login fixes injected')
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js']
+          for f in tags:
+              tag=f'<script src="{f}"></script>'
+              if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          assert "SUPABASE_KEY='"+current+"'" in s
+          for f in tags: assert f'<script src="{f}"></script>' in s
           PY
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
       - name: Set up Gradle 8.10
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
-
       - name: Build debug APK
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
-
       - name: Verify final fixes inside APK
         shell: bash
         run: |
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
-          unzip -p "$APK" assets/www/index.html > /tmp/index.html
+          unzip -p "$APK" assets/www/index.html >/tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
-          echo 'FINAL APK VERIFIED WITH PAYMENT, BACK, EXIT, RE-LOGIN AND ADMIN FIXES'
-
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
