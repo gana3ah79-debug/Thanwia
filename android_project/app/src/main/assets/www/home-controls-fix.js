@@ -39,22 +39,29 @@ async function openSubscription(){
   const [pr,mr,sr]=await Promise.all([
    c.from('subscription_plans').select('*').eq('is_active',true).order('price'),
    c.from('payment_methods').select('*').eq('is_active',true),
-   c.from('student_subscriptions').select('*').eq('user_id',user.id).maybeSingle()
+   c.from('student_subscriptions').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(1).maybeSingle()
   ]);
+  if(pr.error||mr.error||sr.error)throw new Error('subscription read failed');
   const plans=pr.data||[], methods=mr.data||[], sub=sr.data||null;
   const exp=sub?.expires_at?new Date(sub.expires_at):null;
   const days=exp?Math.max(0,Math.ceil((exp.getTime()-Date.now())/86400000)):7;
   const status=sub?.status==='active'&&days>0?'مدفوع':days>0?'تجربة مجانية':'منتهية';
   m.querySelector('.rihla-sub-sheet').innerHTML='<button class="rihla-sub-close" type="button">×</button><h2>💳 إدارة الاشتراك</h2><div class="rihla-sub-status">حالة الحساب: <b>'+status+'</b> · '+days+' يوم</div><h3>الخطط المتاحة</h3>'+(plans.length?plans.map(p=>'<div class="rihla-plan"><div><b>'+esc(p.name)+'</b><div class="muted">'+esc(p.price)+' جنيه / '+esc(p.duration_days)+' يوم</div></div><button type="button" class="btn rihla-plan-btn" data-plan="'+esc(p.id)+'">اختيار الخطة</button></div>').join(''):'<p class="muted">لا توجد خطة منشورة حاليًا.</p>')+'<h3 style="margin-top:18px">طرق الدفع</h3>'+(methods.length?methods.map(x=>'<div class="rihla-pay"><b>'+esc(x.name)+'</b><div>'+esc(x.account_label)+': <strong>'+esc(x.account_value)+'</strong></div><div class="muted">'+esc(x.instructions||'ادفع ثم أرسل رقم العملية.')+'</div></div>').join(''):'<p class="muted">لا توجد طرق دفع منشورة حاليًا.</p>');
   m.querySelector('.rihla-sub-close').onclick=()=>m.remove();
-  m.querySelectorAll('.rihla-plan-btn').forEach(b=>b.onclick=()=>requestPayment(c,user,b.dataset.plan,plans));
+  m.querySelectorAll('.rihla-plan-btn').forEach(b=>b.onclick=()=>requestPayment(c,user,b.dataset.plan,plans,methods));
  }catch(e){m.querySelector('.rihla-sub-sheet').innerHTML='<button class="rihla-sub-close" type="button">×</button><h2>💳 إدارة الاشتراك</h2><p>تعذر تحميل بيانات الاشتراك الآن. تأكد من اتصال الإنترنت ثم حاول مرة أخرى.</p>';m.querySelector('.rihla-sub-close').onclick=()=>m.remove()}
 }
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-async function requestPayment(c,user,id,plans){
+async function requestPayment(c,user,id,plans,methods){
  const p=plans.find(x=>String(x.id)===String(id));if(!p)return;
+ if(!methods.length){alert('لا توجد طريقة دفع مفعلة حاليًا.');return}
+ let method=methods[0];
+ if(methods.length>1){const choices=methods.map((x,i)=>(i+1)+': '+x.name).join('\n');const n=Number(prompt('اختر طريقة الدفع بكتابة رقمها:\n'+choices,'1'));if(!Number.isInteger(n)||!methods[n-1])return;method=methods[n-1]}
  const ref=prompt('اكتب رقم عملية التحويل أو مرجع الدفع:');if(!ref)return;
- try{const {error}=await c.from('payment_requests').insert({user_id:user.id,plan_id:p.id,amount:p.price,reference:ref,status:'pending'});alert(error?'تعذر إرسال طلب الدفع. حاول مرة أخرى.':'تم إرسال طلب الدفع للإدارة بنجاح ✅')}catch(e){alert('تعذر إرسال طلب الدفع. حاول مرة أخرى.')}
+ try{
+  const {error}=await c.from('payment_requests').insert({user_id:user.id,amount_egp:p.price,method:method.name,reference:ref,status:'pending'});
+  alert(error?'تعذر إرسال طلب الدفع. حاول مرة أخرى.':'تم إرسال طلب الدفع للإدارة بنجاح ✅');
+ }catch(e){alert('تعذر إرسال طلب الدفع. حاول مرة أخرى.')}
 }
 function style(){if(document.getElementById('rihlaHomeControlsStyle'))return;const s=document.createElement('style');s.id='rihlaHomeControlsStyle';s.textContent=`
 #adminHomeEntry{order:-9999}.rihla-sub-modal{position:fixed;inset:0;background:rgba(3,16,35,.62);z-index:29999;display:flex;align-items:flex-end;justify-content:center;direction:rtl}.rihla-sub-sheet{width:min(520px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:22px 18px 28px;position:relative;box-shadow:0 -10px 40px rgba(0,0,0,.18)}.rihla-sub-close{position:absolute;top:12px;left:12px;width:40px;height:40px;border:0;border-radius:13px;background:#eef2f7;color:#193253;font-size:28px}.rihla-sub-status{background:#eef4ff;color:#193f76;border-radius:15px;padding:12px;margin:12px 0 16px}.rihla-plan,.rihla-pay{border:1px solid #e2e8f0;border-radius:16px;padding:12px;margin:8px 0}.rihla-plan{display:flex;justify-content:space-between;align-items:center;gap:10px}.rihla-plan-btn{width:auto;min-width:110px;padding:10px 12px}.rihla-sub-loading{text-align:center;padding:28px 0}
