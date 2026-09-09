@@ -26,7 +26,7 @@ jobs:
           s=p.read_text(encoding='utf-8')
           key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
-          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js']
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','registration-cleanup.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:
@@ -67,11 +67,12 @@ jobs:
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js; do
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js registration-cleanup.js; do
             grep -F "<script src=\"$f\"></script>" /tmp/index.html
             unzip -l "$APK" | grep "assets/www/$f"
           done
-          echo 'FULL FINAL APK VERIFIED WITH RESTORED AI QUIZ SETUP'
+          if grep -Fq 'function addLoginColors' /tmp/index.html; then echo 'Unexpected inline login color function'; exit 1; fi
+          echo 'FULL FINAL APK VERIFIED: AUTH CLEANUP + FULL APP FEATURES'
       - name: Upload Full Final APK
         uses: actions/upload-artifact@v4
         with:
