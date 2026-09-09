@@ -20,15 +20,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import base64
+          import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          current = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
-          previous = base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicUsw').decode()
-          if previous in s:
-              s = s.replace(previous, current)
-              p.write_text(s, encoding='utf-8')
-          if current not in s:
+          correct = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          # Replace any embedded publishable key in the source with the known-good key.
+          s2 = re.sub(r"sb_publishable_[A-Za-z0-9_-]+", correct, s)
+          if s2 != s:
+              p.write_text(s2, encoding='utf-8')
+              s = s2
+          if correct not in s:
               raise SystemExit('ERROR: Supabase publishable key was not fixed in source')
           print('Supabase key verified')
           PY
@@ -60,9 +61,8 @@ jobs:
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           python3 - <<'PY'
           from pathlib import Path
-          import base64
           s=Path('/tmp/index.html').read_text(encoding='utf-8')
-          current=base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
+          current='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
           if "SUPABASE_KEY='"+current+"'" not in s:
               raise SystemExit('ERROR: built APK contains the wrong Supabase key')
           print('APK Supabase key verification passed')
