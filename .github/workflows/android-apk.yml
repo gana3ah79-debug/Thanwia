@@ -64,16 +64,18 @@ jobs:
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           test -f android_project/app/src/main/assets/www/3d-modern.css
+          test -f android_project/app/src/main/assets/www/subscription-v2.js
           grep -q 'auth-v2' /tmp/index.html
           grep -q 'authResetPassword' /tmp/index.html
           grep -q 'rihla-auth-final-guard' /tmp/index.html
           grep -q 'تغيير كلمة المرور' /tmp/index.html
           grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0' /tmp/index.html
-          grep -q '3d-modern.css' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          grep -q 'web.canGoBack()' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          echo 'APK VERIFIED: auth + Supabase + 3D theme + Android back'
+          grep -q 'subscription-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'rihlaBack' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'rihlaExitApp' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          echo 'APK VERIFIED: auth + Supabase + subscription + admin + 3D + Android back/exit'
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rihla-thanaweya-3D-BACK-V7
+          name: rihla-thanaweya-SUBSCRIPTIONS-V1
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
