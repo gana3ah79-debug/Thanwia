@@ -40,6 +40,30 @@ body{background:var(--theme-soft);color:var(--theme-ink)}
 .theme-toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#17204a;color:#fff;padding:10px 15px;border-radius:18px;font-size:12px;z-index:1000;display:none;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .theme-toast.show{display:block}
 </style>
+<style id="rihla-dynamic-3d">
+/* RIHLADYNAMIC3D v1 */
+:root{--ui-depth:0 7px 0 rgba(7,29,58,.10),0 13px 24px rgba(20,50,90,.12);--ui-depth-active:0 3px 0 rgba(7,29,58,.10),0 7px 14px rgba(20,50,90,.12)}
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-items:stretch}
+.stats{grid-template-columns:repeat(auto-fit,minmax(92px,1fr))}
+.achievement{grid-template-columns:repeat(auto-fit,minmax(92px,1fr))}
+.skill-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.subject,.card,.stat,.badge,.list-item,.daily-plan,.theme-card{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.subject:hover,.card:hover,.stat:hover,.badge:hover{transform:translateY(-2px);box-shadow:var(--ui-depth)}
+button.btn,.btn,.nav .plus,.icon-btn,.tab,.answer,.theme-option,.subject{transform:translateZ(0);transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
+button.btn,.btn,.nav .plus{box-shadow:0 5px 0 rgba(0,0,0,.14),0 10px 22px rgba(20,50,90,.16);border-top:1px solid rgba(255,255,255,.28)}
+button.btn:active,.btn:active,.nav .plus:active,.icon-btn:active,.tab:active,.answer:active,.theme-option:active,.subject:active{transform:translateY(3px) scale(.985);box-shadow:var(--ui-depth-active);filter:brightness(.98)}
+.icon-btn{box-shadow:0 4px 0 rgba(0,0,0,.12),0 8px 18px rgba(20,50,90,.12)}
+.tab,.theme-option,.subject{box-shadow:0 3px 0 rgba(20,50,90,.08),0 7px 15px rgba(20,50,90,.07)}
+.rihla-3d-icon{display:inline-grid;place-items:center;min-width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(225,232,242,.85));box-shadow:inset 0 2px 2px rgba(255,255,255,.9),0 4px 0 rgba(20,50,90,.10),0 7px 13px rgba(20,50,90,.10)}
+.rihla-layout-bar{display:flex;gap:8px;align-items:center;overflow:auto;padding:3px 1px 8px;margin-bottom:6px}
+.rihla-layout-chip{flex:0 0 auto;border:0;border-radius:14px;padding:9px 12px;background:#fff;color:var(--text);box-shadow:0 3px 0 rgba(20,50,90,.08),0 7px 14px rgba(20,50,90,.07);font-size:11px;font-weight:800}
+.rihla-layout-chip.active{background:var(--theme-main,var(--blue));color:#fff;transform:translateY(-1px);box-shadow:0 4px 0 rgba(0,0,0,.14),0 9px 18px rgba(20,50,90,.13)}
+.rihla-density-compact .content{padding:11px}.rihla-density-compact .card{padding:12px;margin-bottom:10px}.rihla-density-compact .grid{gap:7px}.rihla-density-compact .stats{gap:6px}
+.rihla-density-comfort .content{padding:18px}.rihla-density-comfort .card{padding:18px;margin-bottom:16px}.rihla-density-comfort .grid{gap:13px}
+@media(max-width:370px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.hero h2{font-size:24px}.btn{padding:13px 12px}.card{padding:13px}}
+@media(min-width:600px){.app{max-width:680px}.grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.nav{width:min(680px,100%)}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -248,6 +272,48 @@ renderSubjects();document.getElementById('examDate').value=state.examDate||'';co
   applyTheme(localStorage.getItem('rihla_theme')||'violet',false);
   document.addEventListener('DOMContentLoaded',()=>setTimeout(addEntry,700));
   setTimeout(addEntry,1800);
+})();
+</script>
+<script id="rihla-dynamic-3d-js">
+(function(){
+  const KEY='rihla_ui_density';
+  function density(){
+    const v=localStorage.getItem(KEY)||'smart';
+    document.body.classList.remove('rihla-density-compact','rihla-density-comfort');
+    if(v==='compact')document.body.classList.add('rihla-density-compact');
+    if(v==='comfort')document.body.classList.add('rihla-density-comfort');
+  }
+  function make3d(){
+    document.querySelectorAll('button,.btn,.subject,.stat,.badge,.theme-option,.tab,.answer').forEach(el=>{
+      if(el.dataset.rihla3d)return;
+      el.dataset.rihla3d='1';
+      if(el.querySelector('span,.ico,.rihla-3d-icon'))return;
+      el.addEventListener('pointerdown',()=>el.classList.add('rihla-pressed'),{passive:true});
+      el.addEventListener('pointerup',()=>el.classList.remove('rihla-pressed'),{passive:true});
+      el.addEventListener('pointercancel',()=>el.classList.remove('rihla-pressed'),{passive:true});
+    });
+  }
+  function addLayoutPicker(){
+    if(document.getElementById('rihla-layout-picker'))return;
+    const candidates=[...document.querySelectorAll('button')].filter(b=>/الإعدادات|حساب|ملف|المظهر/.test(b.textContent||''));
+    const host=candidates[0]?.parentElement;
+    const box=document.createElement('div');box.id='rihla-layout-picker';box.className='rihla-layout-bar';
+    const cur=localStorage.getItem(KEY)||'smart';
+    box.innerHTML='<span style="font-size:11px;font-weight:900;white-space:nowrap">ترتيب الواجهة</span>'+[['smart','🧠 ذكي'],['comfort','🌿 مريح'],['compact','⚡ مضغوط']].map(x=>'<button class="rihla-layout-chip '+(x[0]===cur?'active':'')+'" data-density="'+x[0]+'">'+x[1]+'</button>').join('');
+    box.querySelectorAll('[data-density]').forEach(b=>b.onclick=()=>{localStorage.setItem(KEY,b.dataset.density);density();box.querySelectorAll('.rihla-layout-chip').forEach(x=>x.classList.toggle('active',x===b));});
+    if(host){host.insertAdjacentElement('afterend',box)}
+    else{box.style.position='fixed';box.style.bottom='82px';box.style.left='10px';box.style.right='10px';box.style.zIndex='25';box.style.background='rgba(255,255,255,.94)';box.style.borderRadius='18px';box.style.padding='8px';box.style.boxShadow='0 10px 30px rgba(0,0,0,.12)';document.body.appendChild(box)}
+  }
+  function responsive(){
+    const app=document.querySelector('.app');if(!app)return;
+    const w=app.getBoundingClientRect().width;
+    app.dataset.uiWidth=w<380?'small':w<540?'normal':'wide';
+  }
+  density();
+  document.addEventListener('DOMContentLoaded',()=>{make3d();addLayoutPicker();responsive();setTimeout(make3d,900);setTimeout(addLayoutPicker,1200);});
+  window.addEventListener('resize',responsive,{passive:true});
+  const mo=new MutationObserver(()=>{make3d();responsive()});
+  mo.observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 </body></html>
