@@ -22,6 +22,9 @@ jobs:
           root=Path('android_project/app/src/main/assets/www')
           p=root/'index.html'
           s=p.read_text(encoding='utf-8')
+          # Normalize the login declaration. The source had an accidental duplicate `async`.
+          s=re.sub(r'\basync\s+async\s+function\s+authSignIn\s*\(', 'async function authSignIn(', s)
+          s=re.sub(r'(?<!async\s)\bfunction\s+authSignIn\s*\(', 'async function authSignIn(', s)
           for f in ['login-screen-fix.js','auth-theme.js','login-polish.js','admin-entry.js','admin-visibility-fix.js']:
               s=s.replace(f'<script src="{f}"></script>','')
           s=re.sub(r'<script id=["\']rihla-color-themes-js["\']>.*?</script>\s*','',s,flags=re.S|re.I)
@@ -36,12 +39,39 @@ jobs:
           tag='<script src="admin-payment-bridge.js"></script>'
           if tag not in a:a=a.replace('</body>',tag+'\n</body>',1)
           admin.write_text(a,encoding='utf-8')
+          assert 'async async function authSignIn' not in s
+          assert 'async function authSignIn' in s
           assert 'rihla-color-themes-js' not in s
           assert 'payment-methods.js' in s and 'home-controls-fix.js' in s
           assert 'post-login-fix.js' in s
           assert 'admin-payment-bridge.js' in a
           assert s.count('.review-due{')==1 and s.count('.review-done{')==1
           PY
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.parts=[]; self.in_script=False; self.cur=''
+              def handle_starttag(self,t,a):
+                  if t=='script': self.in_script=True; self.cur=''
+              def handle_endtag(self,t):
+                  if t=='script' and self.in_script:
+                      if self.cur.strip(): self.parts.append(self.cur)
+                      self.in_script=False
+              def handle_data(self,d):
+                  if self.in_script: self.cur += d
+          p=P(); p.feed(Path('android_project/app/src/main/assets/www/index.html').read_text(encoding='utf-8'))
+          out=Path('/tmp/inline-js'); out.mkdir(exist_ok=True)
+          for i,src in enumerate(p.parts): (out/f'{i}.js').write_text(src,encoding='utf-8')
+          print('inline scripts:',len(p.parts))
+          PY
+          for f in /tmp/inline-js/*.js; do node --check "$f"; done
+          for f in android_project/app/src/main/assets/www/*.js; do node --check "$f"; done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -70,6 +100,8 @@ jobs:
           grep -F 'rihlaNotifyDialog' <(unzip -p "$APK" assets/www/feature-fixes.js)
           grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'Final guard for the post-login state' <(unzip -p "$APK" assets/www/post-login-fix.js)
+          ! grep -F 'async async function authSignIn' /tmp/index.html
+          grep -F 'async function authSignIn' /tmp/index.html
           test "$(grep -o '\.review-due{' /tmp/index.html | wc -l)" -eq 1
           test "$(grep -o '\.review-done{' /tmp/index.html | wc -l)" -eq 1
       - uses: actions/upload-artifact@v4
