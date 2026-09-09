@@ -1,0 +1,70 @@
+name: Repair Final App
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Inject repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','registration-cleanup.js','feature-fixes.js','admin-visibility-fix.js']
+          for f in tags:
+              tag=f'<script src="{f}"></script>'
+              if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          a=Path('android_project/app/src/main/assets/www/admin.html')
+          h=a.read_text(encoding='utf-8')
+          tag='<script src="admin-security.js"></script>'
+          if tag not in h:h=h.replace('</body>',tag+'\n</body>',1)
+          a.write_text(h,encoding='utf-8')
+          PY
+      - name: Commit injected sources
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html android_project/app/src/main/assets/www/admin.html
+          if git diff --cached --quiet; then echo 'No injection changes'; else git commit -m 'Inject subscription notification and admin security repairs' && git push || true; fi
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+      - name: Verify repairs
+        shell: bash
+        run: |
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/www/index.html >/tmp/index.html
+          unzip -p "$APK" assets/www/admin.html >/tmp/admin.html
+          for f in feature-fixes.js admin-visibility-fix.js registration-cleanup.js; do grep -F "<script src=\"$f\"></script>" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
+          grep -F '<script src="admin-security.js"></script>' /tmp/admin.html
+          unzip -l "$APK" | grep 'assets/www/admin-security.js'
+          if grep -Fq 'function addLoginColors' /tmp/index.html; then exit 1; fi
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: thanwia-repaired-final-apk
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
