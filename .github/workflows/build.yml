@@ -20,11 +20,11 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('android_project/app/src/main/assets/www/index.html')
+          root=Path('android_project/app/src/main/assets/www')
+          p=root/'index.html'
           s=p.read_text(encoding='utf-8')
           current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
-          # Remove obsolete registration/login/admin entry scripts from the APK.
           for f in ['login-screen-fix.js','auth-theme.js','login-polish.js','admin-entry.js','admin-visibility-fix.js']:
               s=s.replace(f'<script src="{f}"></script>','')
           tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
@@ -37,15 +37,19 @@ jobs:
           new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
           if old in s:s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
-          # Normalize known stale key variants in all shipped JS patches.
-          for js in p.parent.glob('*.js'):
+          admin=root/'admin.html'
+          a=admin.read_text(encoding='utf-8')
+          tag='<script src="admin-payment-bridge.js"></script>'
+          if tag not in a:
+              a=a.replace('</body>',tag+'\n</body>',1)
+              admin.write_text(a,encoding='utf-8')
+          for js in root.glob('*.js'):
               x=js.read_text(encoding='utf-8')
               y=x.replace('sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbqK0',current)
               if y!=x:js.write_text(y,encoding='utf-8')
           assert "SUPABASE_KEY='"+current+"'" in s
-          assert 'login-screen-fix.js' not in s and 'auth-theme.js' not in s and 'login-polish.js' not in s
-          assert 'admin-entry.js' not in s and 'admin-visibility-fix.js' not in s
-          assert 'home-controls-fix.js' in s and 'feature-fixes.js' in s
+          assert 'admin-payment-bridge.js' in a
+          assert 'payment-methods.js' in s and 'home-controls-fix.js' in s
           PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -69,6 +73,7 @@ jobs:
           set -e
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html >/tmp/index.html
+          unzip -p "$APK" assets/www/admin.html >/tmp/admin.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
           ! grep -F 'login-screen-fix.js' /tmp/index.html
           ! grep -F 'auth-theme.js' /tmp/index.html
@@ -76,10 +81,15 @@ jobs:
           ! grep -F 'admin-entry.js' /tmp/index.html
           ! grep -F 'admin-visibility-fix.js' /tmp/index.html
           grep -F 'home-controls-fix.js' /tmp/index.html
+          grep -F 'payment-methods.js' /tmp/index.html
+          grep -F 'admin-payment-bridge.js' /tmp/admin.html
           grep -F 'rihlaOpenSubscription' <(unzip -p "$APK" assets/www/home-controls-fix.js)
-          grep -F 'rihlaNotifyDialog' <(unzip -p "$APK" assets/www/feature-fixes.js)
           grep -F 'Do not observe attributes' <(unzip -p "$APK" assets/www/ui-fixes.js)
-          grep -F 'if(b.textContent!==text)' <(unzip -p "$APK" assets/www/feature-fixes.js) || true
+          grep -F 'rihlaNotifyDialog' <(unzip -p "$APK" assets/www/feature-fixes.js)
+          grep -F 'admin_approve_payment_request' <(unzip -p "$APK" assets/www/admin-payment-bridge.js)
+          grep -F 'amount_egp' <(unzip -p "$APK" assets/www/admin-payment-bridge.js)
+          grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
+          grep -F 'receipt_url' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
