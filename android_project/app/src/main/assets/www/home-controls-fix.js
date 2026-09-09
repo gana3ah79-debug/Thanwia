@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const URL='https://eclnddvupggxyythtpkv.supabase.co';
-const KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbqK0';
+const KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0';
 const ADMIN_EMAIL='hamadanagy1979@gmail.com';
 const ADMIN_URL='file:///android_asset/www/admin.html';
 function client(){
