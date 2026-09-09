@@ -25,19 +25,12 @@ jobs:
           s = p.read_text(encoding='utf-8')
           current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
-          tags = [
-              '<script src="final-features.js"></script>',
-              '<script src="admin-entry.js"></script>'
-          ]
+          tags = ['<script src="final-features.js"></script>','<script src="admin-entry.js"></script>']
           for tag in tags:
-              if tag not in s:
-                  s = s.replace('</body>', tag + '\n</body>')
+              if tag not in s: s = s.replace('</body>', tag + '\n</body>')
           p.write_text(s, encoding='utf-8')
-          if "SUPABASE_KEY='" + current + "'" not in s:
-              raise SystemExit('ERROR: Supabase publishable key was not fixed in source')
-          for tag in tags:
-              if tag not in s:
-                  raise SystemExit('ERROR: '+tag+' was not injected')
+          assert "SUPABASE_KEY='" + current + "'" in s
+          for tag in tags: assert tag in s
           print('Full final app configuration verified')
           PY
 
@@ -65,12 +58,15 @@ jobs:
       - name: Verify Full APK
         shell: bash
         run: |
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
           grep -F 'final-features.js' /tmp/index.html
           grep -F 'admin-entry.js' /tmp/index.html
-          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/admin-entry.js'
-          echo 'FULL FINAL APK VERIFIED'
+          unzip -l "$APK" | grep 'assets/www/admin-entry.js'
+          unzip -l "$APK" | grep 'assets/www/admin.html'
+          unzip -p "$APK" assets/www/admin-entry.js | grep -F 'file:///android_asset/www/admin.html'
+          echo 'FULL FINAL APK VERIFIED WITH LOCAL ADMIN PANEL'
 
       - name: Upload Full Final APK
         uses: actions/upload-artifact@v4
