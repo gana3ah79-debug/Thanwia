@@ -1,92 +1,36 @@
 (function(){
-'use strict';
-
-const THEMES={
-  blue:{name:'أزرق',icon:'🔵',main:'#246bff',soft:'#eef4ff',bg:'#f4f7fb',dark:'#071d3a'},
-  green:{name:'أخضر',icon:'🟢',main:'#19a974',soft:'#e7f8f1',bg:'#f3faf7',dark:'#073b2a'},
-  purple:{name:'بنفسجي',icon:'🟣',main:'#7b4dff',soft:'#f0ebff',bg:'#f7f4ff',dark:'#24124f'},
-  orange:{name:'برتقالي',icon:'🟠',main:'#e78a00',soft:'#fff2df',bg:'#fff9f0',dark:'#4a2a00'},
-  cyan:{name:'سماوي',icon:'🔷',main:'#008fb8',soft:'#e4f8fd',bg:'#f1fbfe',dark:'#063846'},
-  rose:{name:'وردي',icon:'🌸',main:'#d34b76',soft:'#ffedf3',bg:'#fff5f8',dark:'#4d172c'}
-};
-
-function applyTheme(name){
-  const t=THEMES[name]||THEMES.blue;
-  document.documentElement.style.setProperty('--ui-main',t.main);
-  document.documentElement.style.setProperty('--ui-accent',t.soft);
-  document.documentElement.style.setProperty('--ui-bg',t.bg);
-  document.documentElement.style.setProperty('--ui-dark',t.dark);
-  document.body.dataset.rihlaTheme=name;
-  try{localStorage.setItem('rihlaThemeV1',name)}catch(e){}
-  document.querySelectorAll('.auth-theme-btn').forEach(b=>{
-    const on=b.dataset.theme===name;
-    b.classList.toggle('selected',on);
-    b.setAttribute('aria-pressed',on?'true':'false');
-  });
-}
-
-function ensureStyle(){
-  if(document.getElementById('authThemeStyle'))return;
-  const s=document.createElement('style');
-  s.id='authThemeStyle';
-  s.textContent=`
-    :root{--ui-main:#246bff;--ui-accent:#eef4ff;--ui-bg:#f4f7fb;--ui-dark:#071d3a}
-    .auth-gate{background:linear-gradient(145deg,rgba(3,18,40,.82),rgba(7,29,58,.68));backdrop-filter:blur(5px);padding:14px}
-    .auth-box{width:min(470px,100%);max-height:94vh;overflow:auto;background:rgba(255,255,255,.98);border:1px solid rgba(255,255,255,.75);border-radius:30px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.30);position:relative}
-    .auth-box h2{font-size:32px;color:var(--ui-dark);margin:4px 0 7px;text-align:center;font-weight:900}
-    .auth-box>p.muted{text-align:center;font-size:13px;line-height:1.8;margin:0 0 14px}
-    .auth-palette-title{text-align:center;font-weight:900;color:var(--ui-dark);font-size:14px;margin:8px 0 9px}
-    .auth-palette{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
-    .auth-theme-btn{min-height:48px;border-radius:15px;border:2px solid #e2e8f0;background:#fff;color:#26364d;font-size:12px;font-weight:900;padding:8px 5px;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 5px 13px rgba(10,30,60,.07);transition:.18s ease;cursor:pointer}
-    .auth-theme-btn:active{transform:scale(.97)}
-    .auth-theme-btn.selected{border-color:var(--ui-main);background:var(--ui-accent);color:var(--ui-main);box-shadow:0 7px 18px color-mix(in srgb,var(--ui-main) 20%,transparent)}
-    .auth-theme-dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
-    .auth-box .input{height:54px;border:1.5px solid #dce4ef;border-radius:17px;background:#fff;margin:7px 0 10px;padding:13px 15px;font-size:16px;outline:none;transition:.18s}
-    .auth-box .input:focus{border-color:var(--ui-main);box-shadow:0 0 0 4px var(--ui-accent)}
-    .auth-box .btn{min-height:54px;border-radius:17px;background:linear-gradient(100deg,var(--ui-main),color-mix(in srgb,var(--ui-main) 70%,#56b7ff));box-shadow:0 9px 20px color-mix(in srgb,var(--ui-main) 22%,transparent);font-size:17px}
-    .auth-box .btn.secondary{background:var(--ui-accent);color:var(--ui-main);box-shadow:none}
-    .auth-msg{min-height:20px;text-align:center;color:#d33;font-weight:700}
-    @media(max-width:380px){.auth-box{padding:17px;border-radius:24px}.auth-box h2{font-size:27px}.auth-palette{gap:6px}.auth-theme-btn{font-size:11px}}
-    body[data-rihla-theme="green"] .btn{background:linear-gradient(100deg,#19a974,#39c995)}
-    body[data-rihla-theme="purple"] .btn{background:linear-gradient(100deg,#7b4dff,#a47dff)}
-    body[data-rihla-theme="orange"] .btn{background:linear-gradient(100deg,#e78a00,#ffb43d)}
-    body[data-rihla-theme="cyan"] .btn{background:linear-gradient(100deg,#008fb8,#31bfdc)}
-    body[data-rihla-theme="rose"] .btn{background:linear-gradient(100deg,#d34b76,#ee7fa2)}
-  `;
-  document.head.appendChild(s);
-}
-
-function buildPalette(){
-  const box=document.querySelector('#authGate .auth-box');
-  if(!box||document.getElementById('authPalette'))return;
-  const title=document.createElement('div');
-  title.className='auth-palette-title';
-  title.textContent='🎨 اختار لون التطبيق';
-  const palette=document.createElement('div');
-  palette.id='authPalette';
-  palette.className='auth-palette';
-  Object.entries(THEMES).forEach(([key,t])=>{
-    const b=document.createElement('button');
-    b.type='button';
-    b.className='auth-theme-btn';
-    b.dataset.theme=key;
-    b.innerHTML='<span class="auth-theme-dot" style="background:'+t.main+'"></span>'+t.name;
-    b.onclick=function(e){e.preventDefault();e.stopPropagation();applyTheme(key);};
-    palette.appendChild(b);
-  });
-  const login=Array.from(box.querySelectorAll('button')).find(b=>/تسجيل الدخول/.test(b.textContent));
-  if(login){box.insertBefore(title,login);box.insertBefore(palette,login)}else{box.appendChild(title);box.appendChild(palette)}
-  const msg=document.getElementById('authMsg');if(msg)msg.classList.add('auth-msg');
-}
-
-function init(){
-  ensureStyle();
-  buildPalette();
-  let saved='blue';try{saved=localStorage.getItem('rihlaThemeV1')||'blue'}catch(e){}
-  applyTheme(THEMES[saved]?saved:'blue');
-}
-
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-new MutationObserver(function(){buildPalette()}).observe(document.documentElement,{childList:true,subtree:true});
-window.rihlaApplyTheme=applyTheme;
+  'use strict';
+  function client(){try{return window.supabaseClient||null}catch(e){return null}}
+  function style(){if(document.getElementById('authSecurityStyle'))return;const s=document.createElement('style');s.id='authSecurityStyle';s.textContent=`
+    .auth-box{width:min(460px,100%);max-height:94vh;overflow:auto;border-radius:30px!important;padding:22px!important;box-shadow:0 24px 80px rgba(0,0,0,.28)!important}
+    .auth-box h2{text-align:center;font-size:30px;margin:4px 0 8px;font-weight:900}
+    .auth-help{text-align:center;color:#6e7c91;font-size:12px;line-height:1.8;margin:0 0 14px}
+    .auth-field{position:relative}.auth-field .input{padding-left:52px!important}
+    .auth-eye{position:absolute;left:8px;top:12px;width:38px;height:38px;border-radius:12px;background:#eef4ff;color:#246bff;font-size:17px}
+    .auth-extra{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:8px}
+    .auth-link{background:none;color:#246bff;font-weight:800;font-size:13px;padding:8px;text-decoration:none}
+    .auth-security-modal{position:fixed;inset:0;background:rgba(3,16,35,.72);backdrop-filter:blur(5px);z-index:11000;display:flex;align-items:center;justify-content:center;padding:16px}
+    .auth-security-card{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:28px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.30);text-align:right}
+    .auth-security-card h3{margin:0 0 6px;font-size:24px;color:#102a4b}.auth-security-sub{font-size:12px;color:#718096;margin-bottom:14px;line-height:1.8}
+    .auth-security-card .input{height:52px;border-radius:16px}.auth-security-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.auth-security-msg{text-align:center;min-height:22px;font-size:12px;font-weight:800;margin-top:9px}
+    .account-security-card{background:linear-gradient(145deg,#fff,#f5f9ff);border:1px solid #e1eaf6}
+    .account-security-btn{width:auto!important;min-width:145px;padding:10px 13px!important}
+  `;document.head.appendChild(s)}
+  function hideColors(){document.querySelectorAll('.login-theme-area,#authPalette,.auth-palette,.auth-palette-title,.auth-theme-btn,.auth-theme-dot').forEach(e=>e.remove());document.querySelectorAll('button,a,div').forEach(e=>{const t=(e.textContent||'').trim();if(/^(🎨\s*)?اختار لون التطبيق$/.test(t)||/^اختار لونك المفضل$/.test(t))e.remove()})}
+  function eyeFor(input){if(!input||input.dataset.eyeDone)return;input.dataset.eyeDone='1';const wrap=document.createElement('div');wrap.className='auth-field';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);const b=document.createElement('button');b.type='button';b.className='auth-eye';b.textContent='👁️';b.onclick=()=>{input.type=input.type==='password'?'text':'password';b.textContent=input.type==='password'?'👁️':'🙈'};wrap.appendChild(b)}
+  function authForm(){const gate=document.getElementById('authGate'),box=gate?.querySelector('.auth-box');if(!box)return;hideColors();style();const p=box.querySelector('.muted');if(p&&!p.classList.contains('auth-help'))p.classList.add('auth-help');eyeFor(document.getElementById('authPassword'));let confirm=document.getElementById('authPasswordConfirm');if(!confirm){confirm=document.createElement('input');confirm.id='authPasswordConfirm';confirm.className='input';confirm.type='password';confirm.placeholder='تأكيد كلمة المرور';const signup=[...box.querySelectorAll('button')].find(b=>/إنشاء حساب/.test(b.textContent));if(signup)box.insertBefore(confirm,signup);eyeFor(confirm)}let extra=box.querySelector('.auth-extra');if(!extra){extra=document.createElement('div');extra.className='auth-extra';extra.innerHTML='<button type="button" class="auth-link" id="authForgotBtn">نسيت كلمة المرور؟</button><button type="button" class="auth-link" id="authToggleMode">إنشاء حساب جديد</button>';box.appendChild(extra);extra.querySelector('#authForgotBtn').onclick=forgotPassword;extra.querySelector('#authToggleMode').onclick=toggleAuthMode}const signIn=[...box.querySelectorAll('button')].find(b=>/تسجيل الدخول/.test(b.textContent));const signUp=[...box.querySelectorAll('button')].find(b=>/إنشاء حساب/.test(b.textContent));if(signIn)signIn.dataset.authSignIn='1';if(signUp)signUp.dataset.authSignUp='1';syncAuthMode()}
+  let signupMode=false;
+  function syncAuthMode(){const box=document.querySelector('#authGate .auth-box');if(!box)return;const title=box.querySelector('h2'),name=document.getElementById('authName'),confirm=document.getElementById('authPasswordConfirm'),signIn=[...box.querySelectorAll('button')].find(b=>b.dataset.authSignIn),signUp=[...box.querySelectorAll('button')].find(b=>b.dataset.authSignUp),toggle=document.getElementById('authToggleMode');if(title)title.textContent=signupMode?'إنشاء حساب جديد':'تسجيل الدخول';if(name)name.style.display=signupMode?'block':'none';if(confirm)confirm.style.display=signupMode?'block':'none';if(signUp)signUp.style.display=signupMode?'block':'none';if(signIn)signIn.style.display=signupMode?'none':'block';if(toggle)toggle.textContent=signupMode?'لديك حساب؟ تسجيل الدخول':'إنشاء حساب جديد'}
+  function toggleAuthMode(){signupMode=!signupMode;const msg=document.getElementById('authMsg');if(msg)msg.textContent='';syncAuthMode()}
+  async function authSignInNew(){const c=client(),email=document.getElementById('authEmail')?.value.trim(),password=document.getElementById('authPassword')?.value||'';if(!c){setMsg('تعذر الاتصال بخدمة الحساب.');return}if(!email||!password){setMsg('اكتب البريد الإلكتروني وكلمة المرور.');return}const {error}=await c.auth.signInWithPassword({email,password});if(error)setMsg('تعذر تسجيل الدخول: '+error.message);else setMsg('تم تسجيل الدخول بنجاح ✅')}
+  async function authSignUpNew(){const c=client(),email=document.getElementById('authEmail')?.value.trim(),password=document.getElementById('authPassword')?.value||'',confirm=document.getElementById('authPasswordConfirm')?.value||'',name=document.getElementById('authName')?.value.trim()||'الطالب';if(!c){setMsg('تعذر الاتصال بخدمة الحساب.');return}if(!email||password.length<6){setMsg('اكتب بريدًا صحيحًا وكلمة مرور 6 أحرف على الأقل.');return}if(password!==confirm){setMsg('كلمتا المرور غير متطابقتين.');return}const {data,error}=await c.auth.signUp({email,password,options:{data:{full_name:name}}});if(error){setMsg(error.message);return}try{window.state.name=name;window.save?.()}catch(e){}setMsg(data.session?'تم إنشاء الحساب وتسجيل الدخول ✅':'تم إنشاء الحساب. راجع بريدك إذا طُلب تأكيد الحساب.')}
+  function setMsg(t){const e=document.getElementById('authMsg');if(e)e.textContent=t}
+  async function forgotPassword(){const c=client(),email=document.getElementById('authEmail')?.value.trim();if(!c){setMsg('تعذر الاتصال بخدمة الحساب.');return}if(!email){setMsg('اكتب بريدك الإلكتروني أولاً ثم اضغط نسيت كلمة المرور.');return}const redirect=location.href.split('#')[0];const {error}=await c.auth.resetPasswordForEmail(email,{redirectTo:redirect});setMsg(error?'تعذر إرسال رابط الاستعادة: '+error.message:'تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني 📩')}
+  function addAccountEntry(){if(!window.authUser)return;const host=document.querySelector('#home .content');if(!host||document.getElementById('accountSecurityCard'))return;const card=document.createElement('div');card.id='accountSecurityCard';card.className='card account-security-card';card.innerHTML='<div class="row"><div><b>🔐 أمان الحساب</b><div class="muted" style="margin-top:4px">حدّث كلمة المرور وحافظ على حسابك آمنًا.</div></div><button class="btn secondary account-security-btn" type="button">تغيير كلمة السر</button></div>';host.insertBefore(card,host.firstChild);card.querySelector('button').onclick=openPasswordModal}
+  function openPasswordModal(){const old=document.getElementById('passwordChangeModal');if(old)old.remove();const w=document.createElement('div');w.id='passwordChangeModal';w.className='auth-security-modal';w.innerHTML='<div class="auth-security-card"><div class="row"><h3>🔐 تغيير كلمة السر</h3><button type="button" class="icon-btn" style="background:#eef4ff;color:#246bff" aria-label="إغلاق">✕</button></div><div class="auth-security-sub">اكتب كلمة المرور الحالية والجديدة. لن يتم حفظ كلمات المرور داخل التطبيق.</div><input id="pcCurrent" class="input" type="password" placeholder="كلمة المرور الحالية"><input id="pcNew" class="input" type="password" placeholder="كلمة المرور الجديدة — 8 أحرف أو أكثر"><input id="pcConfirm" class="input" type="password" placeholder="تأكيد كلمة المرور الجديدة"><div id="pcMsg" class="auth-security-msg"></div><div class="auth-security-actions"><button id="pcCancel" class="btn secondary" type="button">إلغاء</button><button id="pcSave" class="btn" type="button">حفظ كلمة السر</button></div></div>';document.body.appendChild(w);w.querySelector('.icon-btn').onclick=()=>w.remove();w.querySelector('#pcCancel').onclick=()=>w.remove();w.querySelector('#pcSave').onclick=changePassword}
+  async function changePassword(){const c=client(),msg=document.getElementById('pcMsg'),current=document.getElementById('pcCurrent')?.value||'',next=document.getElementById('pcNew')?.value||'',confirm=document.getElementById('pcConfirm')?.value||'';if(!c){msg.textContent='تعذر الاتصال بخدمة الحساب.';return}const {data:{user}}=await c.auth.getUser();if(!user){msg.textContent='سجّل الدخول أولاً.';return}if(!current||next.length<8||next!==confirm){msg.textContent=next.length<8?'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.':'تأكد من كلمة المرور الحالية وتطابق كلمتي المرور الجديدتين.';return}const btn=document.getElementById('pcSave');btn.disabled=true;btn.textContent='جارٍ الحفظ...';try{const login=await c.auth.signInWithPassword({email:user.email,password:current});if(login.error)throw new Error('كلمة المرور الحالية غير صحيحة.');const {error}=await c.auth.updateUser({password:next});if(error)throw error;msg.textContent='تم تغيير كلمة السر بنجاح ✅';setTimeout(()=>document.getElementById('passwordChangeModal')?.remove(),900)}catch(e){msg.textContent=e.message||'تعذر تغيير كلمة السر.';btn.disabled=false;btn.textContent='حفظ كلمة السر'}}
+  window.rihlaOpenPasswordChange=openPasswordModal;
+  function patchAuth(){authForm();if(!window.__authSecurityPatched){window.__authSecurityPatched=true;window.authSignIn=authSignInNew;window.authSignUp=authSignUpNew;window.addEventListener('click',()=>setTimeout(addAccountEntry,0))}}
+  function init(){style();patchAuth();addAccountEntry();setInterval(()=>{hideColors();patchAuth();addAccountEntry()},900);new MutationObserver(()=>setTimeout(patchAuth,0)).observe(document.documentElement,{childList:true,subtree:true})}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
