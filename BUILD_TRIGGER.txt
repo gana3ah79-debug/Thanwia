@@ -1,1 +1,1 @@
-Fresh APK build requested on 2026-09-08. Build must use the current main branch and the existing Supabase-key verification workflow.
+Fresh APK build requested on 2026-09-09. Build must use the restored version and existing Supabase-key verification workflow.
