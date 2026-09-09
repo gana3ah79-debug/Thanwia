@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# Rebuild marker: restore quiz setup screen before questions and enforce third-secondary-only source policy.
+# Final rebuild: quiz explanation/result + complete authentication UI.
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -25,7 +25,7 @@ jobs:
           s=p.read_text(encoding='utf-8')
           current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
-          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js']
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','auth-theme.js','login-polish.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
@@ -55,8 +55,9 @@ jobs:
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html >/tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
-          grep -F 'مصدر ونطاق الأسئلة' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js auth-theme.js login-polish.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
+          grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
+          grep -F 'تغيير كلمة السر' <(unzip -p "$APK" assets/www/auth-theme.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
