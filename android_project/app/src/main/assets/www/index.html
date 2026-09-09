@@ -16,6 +16,30 @@
 <style>
 .modern-datetime{background:linear-gradient(135deg,#071d3a,#1268c7);color:#fff;border-radius:22px;padding:16px;margin-bottom:14px;box-shadow:0 12px 28px rgba(7,29,58,.18);position:relative;overflow:hidden}.modern-datetime:after{content:"✦";position:absolute;left:18px;bottom:-18px;font-size:92px;opacity:.09}.modern-datetime .date-line{font-size:13px;color:#d8e9ff;margin-bottom:7px}.modern-datetime .time-line{font-size:31px;font-weight:900;letter-spacing:1px}.modern-datetime .day-line{font-size:12px;color:#bfe0ff;margin-top:5px}.daily-plan{border-radius:22px;background:#fff;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}.daily-plan-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.daily-plan-title{font-size:18px;font-weight:900}.daily-plan-sub{font-size:12px;color:var(--muted);margin-top:3px}.plan-task{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #edf0f5}.plan-task:last-child{border-bottom:0}.plan-num{width:35px;height:35px;border-radius:12px;background:#eef4ff;color:#246bff;display:grid;place-items:center;font-weight:900;flex:0 0 auto}.plan-icon{font-size:24px;flex:0 0 auto}.plan-info{flex:1;min-width:0}.plan-info b{display:block;font-size:14px}.plan-info span{display:block;font-size:11px;color:var(--muted);margin-top:3px}.plan-time{font-size:11px;font-weight:800;color:#246bff;white-space:nowrap}.plan-note{background:#f5f8fc;border-radius:14px;padding:10px;font-size:11px;color:#607087;margin-top:11px}
 </style>
+<style id="rihla-color-themes">
+/* RIHLATHEMESPATCH v1 */
+:root{--theme-main:#4b46b8;--theme-main2:#7067e8;--theme-soft:#f1f0ff;--theme-ink:#17204a}
+body{background:var(--theme-soft);color:var(--theme-ink)}
+.top{background:linear-gradient(135deg,var(--theme-ink),var(--theme-main))}
+.hero{background:linear-gradient(145deg,var(--theme-ink),var(--theme-main2))}
+.btn{background:linear-gradient(90deg,var(--theme-main),var(--theme-main2))}
+.btn.secondary,.pill,.tab.active{color:var(--theme-main)}
+.btn.secondary{background:var(--theme-soft)}
+.progress i{background:linear-gradient(90deg,var(--theme-main),var(--theme-main2))}
+.subject.selected{border-color:var(--theme-main);background:var(--theme-soft)}
+.nav button.active,.nav .plus{color:var(--theme-main)}
+.nav .plus{background:var(--theme-main)}
+.timer{background:conic-gradient(var(--theme-main2) 0 72%,#dfe4ee 72%)}
+.theme-card{background:#fff;border-radius:20px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+.theme-title{font-size:17px;font-weight:900;margin-bottom:5px}.theme-sub{font-size:12px;color:var(--muted);margin-bottom:13px}
+.theme-options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.theme-option{border:2px solid #edf0f5;background:#fff;border-radius:16px;padding:10px;text-align:right;display:flex;align-items:center;gap:9px;min-height:58px}
+.theme-option.active{border-color:var(--theme-main);background:var(--theme-soft)}
+.theme-swatch{width:34px;height:34px;border-radius:11px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.theme-option b{font-size:12px}.theme-option span{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.theme-toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#17204a;color:#fff;padding:10px 15px;border-radius:18px;font-size:12px;z-index:1000;display:none;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.theme-toast.show{display:block}
+</style>
 </head>
 <body>
 <div class="app">
@@ -181,6 +205,49 @@ renderSubjects();document.getElementById('examDate').value=state.examDate||'';co
     if(lastTime!==null && lastTime>0 && now===0) playCompletionChime();
     lastTime=now;
   },200);
+})();
+</script>
+<script id="rihla-color-themes-js">
+(function(){
+  const themes={
+    violet:{name:'بنفسجي هادئ',main:'#4b46b8',main2:'#7067e8',soft:'#f1f0ff',ink:'#17204a'},
+    teal:{name:'تركوازي مريح',main:'#087f78',main2:'#13a89f',soft:'#eaf8f6',ink:'#123c45'},
+    blue:{name:'أزرق سماوي',main:'#246bff',main2:'#48a5ff',soft:'#eef5ff',ink:'#122d52'},
+    rose:{name:'وردي ناعم',main:'#b34b83',main2:'#dc78aa',soft:'#fff0f6',ink:'#4a2038'},
+    green:{name:'أخضر طبيعي',main:'#16845a',main2:'#35b879',soft:'#edf9f3',ink:'#123d2c'},
+    amber:{name:'ذهبي دافئ',main:'#c87918',main2:'#efa545',soft:'#fff7e9',ink:'#4a3218'}
+  };
+  function applyTheme(key,save){
+    const t=themes[key]||themes.violet;
+    const r=document.documentElement;
+    r.style.setProperty('--theme-main',t.main);r.style.setProperty('--theme-main2',t.main2);r.style.setProperty('--theme-soft',t.soft);r.style.setProperty('--theme-ink',t.ink);
+    r.style.setProperty('--blue',t.main);r.style.setProperty('--cyan',t.main2);r.style.setProperty('--navy',t.ink);
+    const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',t.main);
+    document.querySelectorAll('.theme-option').forEach(x=>x.classList.toggle('active',x.dataset.theme===key));
+    if(save)localStorage.setItem('rihla_theme',key);
+  }
+  function picker(){
+    let old=document.getElementById('rihla-theme-picker');if(old){old.remove();return;}
+    const current=localStorage.getItem('rihla_theme')||'violet';
+    const wrap=document.createElement('div');wrap.id='rihla-theme-picker';wrap.className='modal show';
+    const box=document.createElement('div');box.className='sheet';box.innerHTML='<div class="row"><div><b class="theme-title">🎨 لون التطبيق</b><div class="theme-sub">اختار اللون اللي يريحك — ويتحفظ لكل طالب على جهازه</div></div><button class="icon-btn" style="background:#eef2f7;color:#17204a" id="themeClose">✕</button></div><div class="theme-options">'+Object.entries(themes).map(([k,t])=>'<button class="theme-option '+(k===current?'active':'')+'" data-theme="'+k+'"><i class="theme-swatch" style="background:linear-gradient(135deg,'+t.main+','+t.main2+')"></i><div><b>'+t.name+'</b><span>مريح للعين</span></div></button>').join('')+'</div>';
+    wrap.appendChild(box);document.body.appendChild(wrap);
+    box.querySelector('#themeClose').onclick=()=>wrap.remove();
+    wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove()});
+    box.querySelectorAll('.theme-option').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.theme,true);showToast('تم تغيير لون التطبيق ✓');setTimeout(()=>wrap.remove(),450)});
+  }
+  function showToast(msg){let x=document.getElementById('rihla-theme-toast');if(!x){x=document.createElement('div');x.id='rihla-theme-toast';x.className='theme-toast';document.body.appendChild(x)}x.textContent=msg;x.classList.add('show');clearTimeout(window.__rt);window.__rt=setTimeout(()=>x.classList.remove('show'),1200)}
+  function addEntry(){
+    if(document.getElementById('rihla-theme-entry'))return;
+    const candidates=[...document.querySelectorAll('button')].filter(b=>/الإعدادات|حساب|ملف|المظهر/i.test(b.textContent||''));
+    const host=candidates[0]?.parentElement;
+    const b=document.createElement('button');b.id='rihla-theme-entry';b.className='list-item';b.style.cssText='width:100%;background:#fff;text-align:right;cursor:pointer';b.innerHTML='<span>🎨 <b>لون التطبيق</b><span class="muted" style="display:block;margin-top:3px">اختار اللون المناسب لك</span></span><span>›</span>';b.onclick=picker;
+    if(host)host.appendChild(b);else{b.style.position='fixed';b.style.left='16px';b.style.bottom='88px';b.style.zIndex='30';b.style.width='190px';b.style.borderRadius='16px';b.style.padding='12px';b.style.boxShadow='var(--shadow)';document.body.appendChild(b)}
+  }
+  window.rihlaChooseTheme=picker;
+  applyTheme(localStorage.getItem('rihla_theme')||'violet',false);
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(addEntry,700));
+  setTimeout(addEntry,1800);
 })();
 </script>
 </body></html>
