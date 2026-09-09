@@ -86,7 +86,7 @@ body{background:var(--theme-soft);color:var(--theme-ink)}
 <div id="authGate" class="auth-gate"><div class="auth-box"><h2>تسجيل الدخول</h2><p class="muted">سجّل دخولك لحفظ تقدمك وتشغيل التحديات.</p><input id="authName" class="input" placeholder="الاسم"><input id="authEmail" class="input" type="email" placeholder="البريد الإلكتروني"><input id="authPassword" class="input" type="password" placeholder="كلمة المرور"><button class="btn" onclick="authSignIn()">تسجيل الدخول</button><button class="btn secondary" style="margin-top:9px" onclick="authSignUp()">إنشاء حساب</button><p id="authMsg" class="muted" style="margin-top:10px"></p></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL='https://eclnddvupggxyythtpkv.supabase.co',SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbqK0';
+const SUPABASE_URL='https://eclnddvupggxyythtpkv.supabase.co',SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0';
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let realtimeLobby=null,realtimeInvite=null,realtimeChallenge=null,leaderboardTimer=null,myPresenceId=localStorage.getItem('rihlaPresenceId')||crypto.randomUUID();localStorage.setItem('rihlaPresenceId',myPresenceId);let friendCode=myPresenceId.slice(0,6).toUpperCase();
 const subjectSets={'علوم':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['🧬','الأحياء'],['🧪','الكيمياء'],['⚡','الفيزياء']], 'رياضة':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['📐','الرياضيات'],['🧪','الكيمياء'],['⚡','الفيزياء']], 'أدبي':[['📖','اللغة العربية'],['🌐','اللغة الإنجليزية'],['🏛️','التاريخ'],['🌍','الجغرافيا'],['📊','الإحصاء']]};
@@ -316,4 +316,5 @@ renderSubjects();document.getElementById('examDate').value=state.examDate||'';co
   setTimeout(addEntry,1800);
 })();
 </script>
+<script src="final-features.js"></script>
 </body></html>
