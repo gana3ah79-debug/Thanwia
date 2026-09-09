@@ -73,3 +73,5 @@ jobs:
         with:
           name: rihla-thanaweya-final-fixed-apk
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
+
+# Manual build trigger: this comment intentionally starts the APK workflow on main.
