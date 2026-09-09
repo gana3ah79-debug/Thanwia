@@ -20,4 +20,5 @@ async function toggleMethod(id,v){try{await api('payment_methods?id=eq.'+id,{met
 async function approve(id,userId,planId){try{const p=(await api('subscription_plans?id=eq.'+planId+'&select=*'))?.[0];if(!p)throw new Error('الخطة غير موجودة');const now=new Date(),exp=new Date(now.getTime()+(p.duration_days||30)*86400000).toISOString();await api('payment_requests?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:{status:'approved',reviewed_by:uid,reviewed_at:now.toISOString()}});await api('student_subscriptions?on_conflict=user_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:{user_id:userId,plan_id:planId,status:'active',started_at:now.toISOString(),expires_at:exp,approved_by:uid,approved_at:now.toISOString(),updated_at:now.toISOString()}});await load()}catch(e){alert(e.message)}}
 async function reject(id){try{await api('payment_requests?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:{status:'rejected',reviewed_by:uid,reviewed_at:new Date().toISOString()}});await load()}catch(e){alert(e.message)}}
 boot();
-</script></body></html>
+</script><script src="admin-security.js"></script>
+</body></html>
