@@ -8,14 +8,13 @@ on:
 permissions:
   contents: read
 
-# Final rebuild: quiz explanation/result + complete authentication UI.
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Inject final app fixes
+      - name: Prepare APK without registration UI patches
         shell: bash
         run: |
           python3 - <<'PY'
@@ -25,13 +24,21 @@ jobs:
           s=p.read_text(encoding='utf-8')
           current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
-          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','auth-theme.js','login-polish.js']
+          # Do not inject any registration/login redesign files.
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
+          # The color-theme feature remains available in the app, but it must never
+          # create its picker entry while the original registration dialog is open.
+          old="function addEntry(){\n    if(document.getElementById('rihla-theme-entry'))return;"
+          new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
+          if old in s:s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           assert "SUPABASE_KEY='"+current+"'" in s
           for f in tags: assert f'<script src="{f}"></script>' in s
+          for f in ['login-screen-fix.js','auth-theme.js','login-polish.js']:
+              assert f'<script src="{f}"></script>' not in s
           PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -49,15 +56,17 @@ jobs:
       - name: Build debug APK
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify final fixes inside APK
+      - name: Verify registration UI is original
         shell: bash
         run: |
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html >/tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js auth-theme.js login-polish.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
+          ! grep -F 'login-screen-fix.js' /tmp/index.html
+          ! grep -F 'auth-theme.js' /tmp/index.html
+          ! grep -F 'login-polish.js' /tmp/index.html
+          ! unzip -l "$APK" | grep -E 'assets/www/(login-screen-fix|auth-theme|login-polish)\.js'
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
-          grep -F 'تغيير كلمة السر' <(unzip -p "$APK" assets/www/auth-theme.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
