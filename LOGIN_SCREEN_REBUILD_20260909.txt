@@ -1,0 +1,1 @@
+Rebuild APK with the corrected full-screen centered login and side-control removal fix.
