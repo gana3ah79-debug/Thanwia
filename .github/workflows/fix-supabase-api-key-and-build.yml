@@ -26,12 +26,15 @@ jobs:
           s=p.read_text(encoding='utf-8')
           key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
-          tag='<script src="final-features.js"></script>'
-          if tag not in s:
-              s=s.replace('</body>',tag+'\n</body>')
+          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js']
+          for f in tags:
+              tag=f'<script src="{f}"></script>'
+              if tag not in s:
+                  s=s.replace('</body>',tag+'\n</body>',1)
           p.write_text(s,encoding='utf-8')
           if "SUPABASE_KEY='"+key+"'" not in s: raise SystemExit('key verification failed')
-          if tag not in s: raise SystemExit('final features not injected')
+          for f in tags:
+              if f'<script src="{f}"></script>' not in s: raise SystemExit(f'{f} not injected')
           PY
 
       - name: Commit final source when changed
@@ -61,11 +64,14 @@ jobs:
       - name: Verify final APK
         shell: bash
         run: |
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          grep -F 'final-features.js' /tmp/index.html
-          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/final-features.js'
-          echo 'FULL FINAL APK VERIFIED'
+          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js; do
+            grep -F "<script src=\"$f\"></script>" /tmp/index.html
+            unzip -l "$APK" | grep "assets/www/$f"
+          done
+          echo 'FULL FINAL APK VERIFIED WITH RESTORED AI QUIZ SETUP'
       - name: Upload Full Final APK
         uses: actions/upload-artifact@v4
         with:
