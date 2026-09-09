@@ -1,12 +1,15 @@
 (function(){
 'use strict';
+let notifyTimer=0;
 function notifyButton(){
  const b=document.getElementById('requestNotifyBtn'); if(!b)return;
  try{
-  if(!('Notification' in window)){b.textContent='🔔 التنبيهات غير مدعومة';b.className='mini-btn';return}
-  if(Notification.permission==='granted'){b.textContent='🔔 التنبيهات مفعلة';b.className='mini-btn done';return}
-  if(Notification.permission==='denied'){b.textContent='🔕 التنبيهات محظورة';b.className='mini-btn';return}
-  b.textContent='🔔 تفعيل التنبيهات';b.className='mini-btn';
+  let text='🔔 تفعيل التنبيهات',cls='mini-btn';
+  if(!('Notification' in window)){text='🔔 التنبيهات غير مدعومة'}
+  else if(Notification.permission==='granted'){text='🔔 التنبيهات مفعلة';cls='mini-btn done'}
+  else if(Notification.permission==='denied'){text='🔕 التنبيهات محظورة'}
+  if(b.textContent!==text)b.textContent=text;
+  if(b.className!==cls)b.className=cls;
  }catch(e){}
 }
 async function enableNotifications(){
@@ -20,7 +23,7 @@ async function enableNotifications(){
  notifyButton();
 }
 function fixNotifications(){const b=document.getElementById('requestNotifyBtn');if(b&&!b.dataset.notifyFix){b.dataset.notifyFix='1';b.type='button';b.onclick=enableNotifications}notifyButton()}
-function fixSubscription(){const b=document.getElementById('subOpen');if(b&&!b.dataset.subFix){b.dataset.subFix='1';b.type='button';b.style.pointerEvents='auto';b.style.cursor='pointer';b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{if(typeof window.rihlaFinalFeatures?.openSubscription==='function')window.rihlaFinalFeatures.openSubscription();else if(typeof openSubscription==='function')openSubscription();else toast('تعذر فتح إدارة الاشتراك، أعد فتح الصفحة.')}catch(x){toast('تعذر فتح إدارة الاشتراك.')}},true)}}
+function fixSubscription(){const b=document.getElementById('subOpen');if(b&&!b.dataset.subFix){b.dataset.subFix='1';b.type='button';if(b.style.pointerEvents!=='auto')b.style.pointerEvents='auto';if(b.style.cursor!=='pointer')b.style.cursor='pointer';b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{if(typeof window.rihlaFinalFeatures?.openSubscription==='function')window.rihlaFinalFeatures.openSubscription();else if(typeof openSubscription==='function')openSubscription();else toast('تعذر فتح إدارة الاشتراك، أعد فتح الصفحة.')}catch(x){toast('تعذر فتح إدارة الاشتراك.')}},true)}}
 function tick(){fixNotifications();fixSubscription()}
-new MutationObserver(tick).observe(document.documentElement,{childList:true,subtree:true});setInterval(tick,500);setTimeout(tick,300)
+new MutationObserver(()=>setTimeout(tick,50)).observe(document.documentElement,{childList:true,subtree:true});setInterval(tick,1000);setTimeout(tick,300)
 })();
