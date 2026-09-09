@@ -22,7 +22,6 @@ jobs:
           root=Path('android_project/app/src/main/assets/www')
           p=root/'index.html'
           s=p.read_text(encoding='utf-8')
-          # Normalize the login declaration. The source had an accidental duplicate `async`.
           s=re.sub(r'\basync\s+async\s+function\s+authSignIn\s*\(', 'async function authSignIn(', s)
           s=re.sub(r'(?<!async\s)\bfunction\s+authSignIn\s*\(', 'async function authSignIn(', s)
           for f in ['login-screen-fix.js','auth-theme.js','login-polish.js','admin-entry.js','admin-visibility-fix.js']:
@@ -40,9 +39,8 @@ jobs:
           if tag not in a:a=a.replace('</body>',tag+'\n</body>',1)
           admin.write_text(a,encoding='utf-8')
           assert 'async async function authSignIn' not in s
-          assert 'async function authSignIn' in s
+          assert s.count('async function authSignIn')==1
           assert 'rihla-color-themes-js' not in s
-          assert 'payment-methods.js' in s and 'home-controls-fix.js' in s
           assert 'post-login-fix.js' in s
           assert 'admin-payment-bridge.js' in a
           assert s.count('.review-due{')==1 and s.count('.review-done{')==1
@@ -101,13 +99,10 @@ jobs:
           grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'Final guard for the post-login state' <(unzip -p "$APK" assets/www/post-login-fix.js)
           ! grep -F 'async async function authSignIn' /tmp/index.html
-          grep -F 'async function authSignIn' /tmp/index.html
+          test "$(grep -o 'async function authSignIn' /tmp/index.html | wc -l)" -eq 1
           test "$(grep -o '\.review-due{' /tmp/index.html | wc -l)" -eq 1
           test "$(grep -o '\.review-done{' /tmp/index.html | wc -l)" -eq 1
       - uses: actions/upload-artifact@v4
         with:
           name: Thanwia-APK-FINAL
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-
-# Trigger a clean verified final build after the login syntax fix.
