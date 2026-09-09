@@ -16,7 +16,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Inject navigation and login theme controls
+      - name: Inject navigation and login polish
         shell: bash
         run: |
           python3 - <<'PY'
@@ -24,16 +24,18 @@ jobs:
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
           tags = [
-              '<script src="navigation.js"></script>',
-              '<script src="auth-theme.js"></script>'
+              '<link rel="stylesheet" href="login-polish.css">',
+              '<script src="login-polish.js"></script>',
+              '<script src="navigation.js"></script>'
           ]
           for tag in tags:
               if tag not in s:
-                  s = s.replace('</body>', tag + '\n</body>', 1)
-              if tag not in s:
-                  raise SystemExit(f'{tag} injection failed')
+                  s = s.replace('</head>', tag + '\n</head>', 1) if tag.startswith('<link') else s.replace('</body>', tag + '\n</body>', 1)
           p.write_text(s, encoding='utf-8')
-          print('Navigation and login theme controls injected')
+          for tag in tags:
+              if tag not in s:
+                  raise SystemExit(f'injection failed: {tag}')
+          print('Navigation and login polish injected')
           PY
 
       - name: Set up Java 17
@@ -57,15 +59,15 @@ jobs:
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify navigation and login theme controls inside APK
+      - name: Verify UI files inside APK
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
           grep -F 'navigation.js' /tmp/index.html
-          grep -F 'auth-theme.js' /tmp/index.html
-          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/navigation.js'
-          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/www/auth-theme.js'
-          echo 'Navigation and login theme controls verified in APK'
+          grep -F 'login-polish.js' /tmp/index.html
+          grep -F 'login-polish.css' /tmp/index.html
+          unzip -l android_project/app/build/outputs/apk/debug/app-debug.apk | grep -E 'assets/www/(navigation.js|login-polish.js|login-polish.css)'
+          echo 'UI files verified in APK'
 
       - name: Verify APK exists
         run: test -f android_project/app/build/outputs/apk/debug/app-debug.apk
