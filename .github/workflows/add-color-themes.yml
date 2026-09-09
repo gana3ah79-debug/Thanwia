@@ -15,6 +15,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify and fix Supabase publishable key
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          current=base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicS0w').decode()
+          previous=base64.b64decode('c2JfcHVibGlzaGFibGVfRnFJNWhlSzc3c3lyLTNRSDJMUEhnX0U4MnZicUsw').decode()
+          if previous in s:
+              s=s.replace(previous,current)
+              p.write_text(s,encoding='utf-8')
+          if current not in s:
+              raise SystemExit('ERROR: Supabase publishable key is missing or invalid')
+          print('Supabase key verified')
+          PY
+
       - name: Add theme picker and personalized color themes
         shell: bash
         run: |
@@ -58,50 +76,17 @@ jobs:
               green:{name:'أخضر طبيعي',main:'#16845a',main2:'#35b879',soft:'#edf9f3',ink:'#123d2c'},
               amber:{name:'ذهبي دافئ',main:'#c87918',main2:'#efa545',soft:'#fff7e9',ink:'#4a3218'}
             };
-            function applyTheme(key,save){
-              const t=themes[key]||themes.violet;
-              const r=document.documentElement;
-              r.style.setProperty('--theme-main',t.main);r.style.setProperty('--theme-main2',t.main2);r.style.setProperty('--theme-soft',t.soft);r.style.setProperty('--theme-ink',t.ink);
-              r.style.setProperty('--blue',t.main);r.style.setProperty('--cyan',t.main2);r.style.setProperty('--navy',t.ink);
-              const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',t.main);
-              document.querySelectorAll('.theme-option').forEach(x=>x.classList.toggle('active',x.dataset.theme===key));
-              if(save)localStorage.setItem('rihla_theme',key);
-            }
-            function picker(){
-              let old=document.getElementById('rihla-theme-picker');if(old){old.remove();return;}
-              const current=localStorage.getItem('rihla_theme')||'violet';
-              const wrap=document.createElement('div');wrap.id='rihla-theme-picker';wrap.className='modal show';
-              const box=document.createElement('div');box.className='sheet';box.innerHTML='<div class="row"><div><b class="theme-title">🎨 لون التطبيق</b><div class="theme-sub">اختار اللون اللي يريحك — ويتحفظ لكل طالب على جهازه</div></div><button class="icon-btn" style="background:#eef2f7;color:#17204a" id="themeClose">✕</button></div><div class="theme-options">'+Object.entries(themes).map(([k,t])=>'<button class="theme-option '+(k===current?'active':'')+'" data-theme="'+k+'"><i class="theme-swatch" style="background:linear-gradient(135deg,'+t.main+','+t.main2+')"></i><div><b>'+t.name+'</b><span>مريح للعين</span></div></button>').join('')+'</div>';
-              wrap.appendChild(box);document.body.appendChild(wrap);
-              box.querySelector('#themeClose').onclick=()=>wrap.remove();
-              wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove()});
-              box.querySelectorAll('.theme-option').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.theme,true);showToast('تم تغيير لون التطبيق ✓');setTimeout(()=>wrap.remove(),450)});
-            }
-            function showToast(msg){let x=document.getElementById('rihla-theme-toast');if(!x){x=document.createElement('div');x.id='rihla-theme-toast';x.className='theme-toast';document.body.appendChild(x)}x.textContent=msg;x.classList.add('show');clearTimeout(window.__rt);window.__rt=setTimeout(()=>x.classList.remove('show'),1200)}
-            function addEntry(){
-              if(document.getElementById('rihla-theme-entry'))return;
-              const candidates=[...document.querySelectorAll('button')].filter(b=>/الإعدادات|حساب|ملف|المظهر/i.test(b.textContent||''));
-              const host=candidates[0]?.parentElement;
-              const b=document.createElement('button');b.id='rihla-theme-entry';b.className='list-item';b.style.cssText='width:100%;background:#fff;text-align:right;cursor:pointer';b.innerHTML='<span>🎨 <b>لون التطبيق</b><span class="muted" style="display:block;margin-top:3px">اختار اللون المناسب لك</span></span><span>›</span>';b.onclick=picker;
-              if(host)host.appendChild(b);else{b.style.position='fixed';b.style.left='16px';b.style.bottom='88px';b.style.zIndex='30';b.style.width='190px';b.style.borderRadius='16px';b.style.padding='12px';b.style.boxShadow='var(--shadow)';document.body.appendChild(b)}
-            }
-            window.rihlaChooseTheme=picker;
-            applyTheme(localStorage.getItem('rihla_theme')||'violet',false);
-            document.addEventListener('DOMContentLoaded',()=>setTimeout(addEntry,700));
-            setTimeout(addEntry,1800);
+            function applyTheme(key,save){const t=themes[key]||themes.violet,r=document.documentElement;r.style.setProperty('--theme-main',t.main);r.style.setProperty('--theme-main2',t.main2);r.style.setProperty('--theme-soft',t.soft);r.style.setProperty('--theme-ink',t.ink);r.style.setProperty('--blue',t.main);r.style.setProperty('--cyan',t.main2);r.style.setProperty('--navy',t.ink);document.querySelectorAll('.theme-option').forEach(x=>x.classList.toggle('active',x.dataset.theme===key));if(save)localStorage.setItem('rihla_theme',key)}
+            function picker(){let old=document.getElementById('rihla-theme-picker');if(old){old.remove();return}const current=localStorage.getItem('rihla_theme')||'violet',wrap=document.createElement('div');wrap.id='rihla-theme-picker';wrap.className='modal show';const box=document.createElement('div');box.className='sheet';box.innerHTML='<div class="row"><div><b class="theme-title">🎨 لون التطبيق</b><div class="theme-sub">اختار اللون اللي يريحك — ويتحفظ لكل طالب على جهازه</div></div><button class="icon-btn" style="background:#eef2f7;color:#17204a" id="themeClose">✕</button></div><div class="theme-options">'+Object.entries(themes).map(([k,t])=>'<button class="theme-option '+(k===current?'active':'')+'" data-theme="'+k+'"><i class="theme-swatch" style="background:linear-gradient(135deg,'+t.main+','+t.main2+')"></i><div><b>'+t.name+'</b><span>مريح للعين</span></div></button>').join('')+'</div>';wrap.appendChild(box);document.body.appendChild(wrap);box.querySelector('#themeClose').onclick=()=>wrap.remove();wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove()});box.querySelectorAll('.theme-option').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.theme,true);setTimeout(()=>wrap.remove(),350)})}
+            function addEntry(){if(document.getElementById('rihla-theme-entry'))return;const b=document.createElement('button');b.id='rihla-theme-entry';b.className='list-item';b.style.cssText='position:fixed;left:16px;bottom:88px;z-index:30;width:190px;border-radius:16px;padding:12px;background:#fff;text-align:right;box-shadow:var(--shadow)';b.innerHTML='<span>🎨 <b>لون التطبيق</b><span class="muted" style="display:block;margin-top:3px">اختار اللون المناسب لك</span></span><span>›</span>';b.onclick=picker;document.body.appendChild(b)}
+            window.rihlaChooseTheme=picker;applyTheme(localStorage.getItem('rihla_theme')||'violet',false);setTimeout(addEntry,1200);
           })();
           </script>'''
-              if '</head>' in s:
-                  s=s.replace('</head>',css+'\n</head>',1)
-              else:
-                  raise SystemExit('head closing tag not found')
-              if '</body>' in s:
-                  s=s.replace('</body>',js+'\n</body>',1)
-              else:
-                  s=s+js
+              if '</head>' in s:s=s.replace('</head>',css+'\n</head>',1)
+              else:raise SystemExit('head closing tag not found')
+              if '</body>' in s:s=s.replace('</body>',js+'\n</body>',1)
+              else:s=s+js
               p.write_text(s,encoding='utf-8')
-          else:
-              print('Theme patch already present; no duplicate added')
           PY
 
       - name: Commit source change
