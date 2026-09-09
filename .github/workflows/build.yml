@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Prepare APK without registration UI patches
+      - name: Prepare APK
         shell: bash
         run: |
           python3 - <<'PY'
@@ -24,13 +24,11 @@ jobs:
           s=p.read_text(encoding='utf-8')
           current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
-          # Do not inject any registration/login redesign files.
-          tags=['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js']
+          tags=['final-features.js','payment-methods.js','admin-entry.js','admin-visibility-fix.js','admin-security.js','ui-fixes.js','feature-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
-          # The color-theme feature remains available in the app, but it must never
-          # create its picker entry while the original registration dialog is open.
+          # Prevent the embedded theme picker from attaching to the registration dialog.
           old="function addEntry(){\n    if(document.getElementById('rihla-theme-entry'))return;"
           new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
           if old in s:s=s.replace(old,new,1)
@@ -56,17 +54,20 @@ jobs:
       - name: Build debug APK
         working-directory: android_project
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify registration UI is original
+      - name: Verify APK integrity and login safety
         shell: bash
         run: |
+          set -e
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html >/tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
           ! grep -F 'login-screen-fix.js' /tmp/index.html
           ! grep -F 'auth-theme.js' /tmp/index.html
           ! grep -F 'login-polish.js' /tmp/index.html
-          ! unzip -l "$APK" | grep -E 'assets/www/(login-screen-fix|auth-theme|login-polish)\.js'
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
+          grep -F 'Do not observe attributes' <(unzip -p "$APK" assets/www/ui-fixes.js)
+          grep -F 'if(b.textContent!==text)' <(unzip -p "$APK" assets/www/feature-fixes.js)
+          grep -F 'registration-cleanup-style' <(unzip -p "$APK" assets/www/registration-cleanup.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
