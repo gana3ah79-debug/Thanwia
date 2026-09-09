@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply full final app configuration
+      - name: Apply app configuration without registration UI patches
         shell: bash
         run: |
           python3 - <<'PY'
@@ -25,14 +25,18 @@ jobs:
           s = p.read_text(encoding='utf-8')
           current = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + current + "'", s, count=1)
-          tags = ['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','login-screen-fix.js','quiz-screen-restore.js','auth-theme.js','login-polish.js']
+          tags = ['final-features.js','payment-methods.js','admin-entry.js','ui-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s: s=s.replace('</body>',tag+'\n</body>',1)
+          old="function addEntry(){\n    if(document.getElementById('rihla-theme-entry'))return;"
+          new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
+          if old in s:s=s.replace(old,new,1)
           p.write_text(s, encoding='utf-8')
           assert "SUPABASE_KEY='" + current + "'" in s
           for f in tags: assert f'<script src="{f}"></script>' in s
-          print('Full final app configuration verified')
+          for f in ['login-screen-fix.js','auth-theme.js','login-polish.js']:
+              assert f'<script src="{f}"></script>' not in s
           PY
 
       - name: Set up Java
@@ -52,22 +56,23 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Build Full APK
+      - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
 
-      - name: Verify Full APK
+      - name: Verify original registration UI
         shell: bash
         run: |
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/www/index.html > /tmp/index.html
           grep -F "SUPABASE_KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'" /tmp/index.html
-          for f in final-features.js payment-methods.js admin-entry.js ui-fixes.js task-color-fix.js ai-quiz-fix.js login-screen-fix.js quiz-screen-restore.js auth-theme.js login-polish.js; do grep -F "$f" /tmp/index.html; unzip -l "$APK" | grep "assets/www/$f"; done
-          grep -F 'تغيير كلمة السر' <(unzip -p "$APK" assets/www/auth-theme.js)
+          ! grep -F 'login-screen-fix.js' /tmp/index.html
+          ! grep -F 'auth-theme.js' /tmp/index.html
+          ! grep -F 'login-polish.js' /tmp/index.html
+          ! unzip -l "$APK" | grep -E 'assets/www/(login-screen-fix|auth-theme|login-polish)\.js'
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
-          echo 'FULL FINAL APK VERIFIED'
 
-      - name: Upload Full Final APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: rihla-thanaweya-full-final-apk
