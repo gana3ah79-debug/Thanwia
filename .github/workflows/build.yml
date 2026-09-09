@@ -24,6 +24,9 @@ jobs:
           s=p.read_text(encoding='utf-8')
           current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
+          # Remove obsolete registration/login patch scripts completely.
+          for f in ['login-screen-fix.js','auth-theme.js','login-polish.js']:
+              s=s.replace(f'<script src="{f}"></script>','')
           tags=['final-features.js','payment-methods.js','admin-entry.js','admin-visibility-fix.js','admin-security.js','ui-fixes.js','feature-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
@@ -35,8 +38,7 @@ jobs:
           if old in s:s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           assert "SUPABASE_KEY='"+current+"'" in s
-          for f in ['login-screen-fix.js','auth-theme.js','login-polish.js']:
-              assert f'<script src="{f}"></script>' not in s
+          assert 'login-screen-fix.js' not in s and 'auth-theme.js' not in s and 'login-polish.js' not in s
           PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
