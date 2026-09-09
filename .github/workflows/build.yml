@@ -27,12 +27,14 @@ jobs:
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+current+"'", s, count=1)
           for f in ['login-screen-fix.js','auth-theme.js','login-polish.js','admin-entry.js','admin-visibility-fix.js']:
               s=s.replace(f'<script src="{f}"></script>','')
-          tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
+          tags=['final-features.js','payment-methods.js','admin-security.js','ui-fixes.js','feature-fixes.js','home-controls-fix.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js','post-login-fix.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
               if tag not in s:
                   if '</body>' in s:s=s.replace('</body>',tag+'\n</body>',1)
                   else:s += '\n'+tag+'\n'
+          # Remove the huge accidental repetition of the same review CSS rules.
+          s=re.sub(r'(\.review-due\{[^}]*\}\.review-done\{[^}]*\})+', r'\1', s)
           old="function addEntry(){\n    if(document.getElementById('rihla-theme-entry'))return;"
           new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
           if old in s:s=s.replace(old,new,1)
@@ -50,6 +52,8 @@ jobs:
           assert "SUPABASE_KEY='"+current+"'" in s
           assert 'admin-payment-bridge.js' in a
           assert 'payment-methods.js' in s and 'home-controls-fix.js' in s
+          assert 'post-login-fix.js' in s
+          assert s.count('.review-due{')==1 and s.count('.review-done{')==1
           PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -82,6 +86,7 @@ jobs:
           ! grep -F 'admin-visibility-fix.js' /tmp/index.html
           grep -F 'home-controls-fix.js' /tmp/index.html
           grep -F 'payment-methods.js' /tmp/index.html
+          grep -F 'post-login-fix.js' /tmp/index.html
           grep -F 'admin-payment-bridge.js' /tmp/admin.html
           grep -F 'rihlaOpenSubscription' <(unzip -p "$APK" assets/www/home-controls-fix.js)
           grep -F 'Do not observe attributes' <(unzip -p "$APK" assets/www/ui-fixes.js)
@@ -91,6 +96,9 @@ jobs:
           grep -F 'plan_id' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'receipt_url' <(unzip -p "$APK" assets/www/payment-methods.js)
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
+          test "$(grep -o '\.review-due{' /tmp/index.html | wc -l)" -eq 1
+          test "$(grep -o '\.review-done{' /tmp/index.html | wc -l)" -eq 1
+          grep -F 'Final guard for the post-login state' <(unzip -p "$APK" assets/www/post-login-fix.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
