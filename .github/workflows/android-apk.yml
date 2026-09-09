@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Force known-good Supabase auth key and remove legacy color picker from APK
+      - name: Force verified Supabase auth key and remove legacy color picker from APK
         shell: bash
         run: |
           python3 - <<'PY'
@@ -23,14 +23,11 @@ jobs:
           import re
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          correct = 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
-          # Replace ANY existing Supabase key assigned to SUPABASE_KEY, including legacy JWT keys.
+          correct = 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s2 = re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='" + correct + "'", s)
           if s2 == s and correct not in s:
               raise SystemExit('ERROR: SUPABASE_KEY assignment was not found')
           s = s2
-          # The old theme picker is intentionally disabled in the APK. Keep theme CSS/scripts
-          # harmlessly present for compatibility, but make both the entry and modal impossible to show.
           guard = '<style id="rihla-no-color-picker">#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,.theme-options,.theme-title,.theme-sub{display:none!important}</style>'
           if 'rihla-no-color-picker' not in s:
               s = s.replace('</head>', guard + '</head>', 1)
@@ -38,9 +35,9 @@ jobs:
           if 'rihla-auth-final-guard' not in s:
               s = s.replace('</body>', guard_js + '</body>', 1)
           p.write_text(s, encoding='utf-8')
-          if correct not in s or "SUPABASE_KEY='" + correct + "'" not in s:
+          if "SUPABASE_KEY='" + correct + "'" not in s:
               raise SystemExit('ERROR: final auth key is not correct')
-          print('Supabase auth key fixed and legacy color picker disabled')
+          print('Verified Supabase publishable key applied and legacy color picker disabled')
           PY
 
       - name: Set up Java
@@ -71,7 +68,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('/tmp/index.html').read_text(encoding='utf-8')
-          current='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          current='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           if "SUPABASE_KEY='"+current+"'" not in s:
               raise SystemExit('ERROR: built APK contains the wrong Supabase key')
           if 'rihla-no-color-picker' not in s:
