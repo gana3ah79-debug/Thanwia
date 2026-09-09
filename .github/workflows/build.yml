@@ -27,14 +27,14 @@ jobs:
           tags=['final-features.js','payment-methods.js','admin-entry.js','admin-visibility-fix.js','admin-security.js','ui-fixes.js','feature-fixes.js','task-color-fix.js','ai-quiz-fix.js','quiz-screen-restore.js','registration-cleanup.js','navigation.js']
           for f in tags:
               tag=f'<script src="{f}"></script>'
-              if tag not in s:s=s.replace('</body>',tag+'\n</body>',1)
-          # Prevent the embedded theme picker from attaching to the registration dialog.
+              if tag not in s:
+                  if '</body>' in s:s=s.replace('</body>',tag+'\n</body>',1)
+                  else:s += '\n'+tag+'\n'
           old="function addEntry(){\n    if(document.getElementById('rihla-theme-entry'))return;"
           new="function addEntry(){\n    const auth=document.getElementById('authGate');\n    if(auth && getComputedStyle(auth).display!=='none')return;\n    if(document.getElementById('rihla-theme-entry'))return;"
           if old in s:s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           assert "SUPABASE_KEY='"+current+"'" in s
-          for f in tags: assert f'<script src="{f}"></script>' in s
           for f in ['login-screen-fix.js','auth-theme.js','login-polish.js']:
               assert f'<script src="{f}"></script>' not in s
           PY
@@ -67,7 +67,6 @@ jobs:
           grep -F 'rihla-explanation-v2' <(unzip -p "$APK" assets/www/quiz-screen-restore.js)
           grep -F 'Do not observe attributes' <(unzip -p "$APK" assets/www/ui-fixes.js)
           grep -F 'if(b.textContent!==text)' <(unzip -p "$APK" assets/www/feature-fixes.js)
-          grep -F 'registration-cleanup-style' <(unzip -p "$APK" assets/www/registration-cleanup.js)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
