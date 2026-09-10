@@ -34,6 +34,7 @@ jobs:
       - name: Normalize Supabase key and build
         shell: bash
         run: |
+          set -e
           python3 - <<'PY'
           from pathlib import Path
           p=Path('android_project/app/src/main/assets/www/index.html')
@@ -42,8 +43,7 @@ jobs:
           p.write_text(s,encoding='utf-8')
           assert 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0' not in s
           PY
-          gradle --no-daemon :app:assembleDebug
-        working-directory: android_project
+          gradle --no-daemon -p android_project :app:assembleDebug
       - name: Verify APK
         shell: bash
         run: |
