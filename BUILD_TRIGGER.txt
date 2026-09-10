@@ -1,1 +1,1 @@
-Fresh APK build requested on 2026-09-10. Build the cleaned source with deterministic module loading, isolated per-user state, and stabilized login/logout.
+Fresh APK build requested on 2026-09-10. Friend Challenge V2 backend code-generation and create-flow compatibility fix verified against Supabase; rebuild without changing navigation or unrelated modules.
