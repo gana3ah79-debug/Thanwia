@@ -1,0 +1,46 @@
+name: Build Thanwia Fixed APK
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify auth fix
+        shell: bash
+        run: |
+          grep -q 'function validEmail' android_project/app/src/main/assets/www/auth-fix-v2.js
+          grep -q 'function cleanEmail' android_project/app/src/main/assets/www/auth-fix-v2.js
+          grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0' android_project/app/src/main/assets/www/auth-fix-v2.js
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+      - name: Verify APK
+        run: |
+          test -s android_project/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/auth-fix-v2.js | grep -q 'function validEmail'
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/auth-fix-v2.js | grep -q 'function cleanEmail'
+          echo 'FIXED APK VERIFIED'
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Thanwia-Email-Fix-APK
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
