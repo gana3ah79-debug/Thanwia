@@ -23,7 +23,7 @@ jobs:
           import re
           p=Path('android_project/app/src/main/assets/www/index.html')
           s=p.read_text(encoding='utf-8')
-          key='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
+          key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
           if 'auth-v2' not in s:
               old=re.search(r'<div id="authGate" class="auth-gate">.*?</div></div>',s,re.S)
@@ -88,7 +88,7 @@ jobs:
           grep -q 'authResetPassword' /tmp/index.html
           grep -q 'rihla-auth-final-guard' /tmp/index.html
           grep -q 'تغيير كلمة المرور' /tmp/index.html
-          grep -q 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0' /tmp/index.html
+          grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0' /tmp/index.html
           grep -q 'subscription-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'admin-access-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'rihlaBack' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
@@ -116,4 +116,4 @@ jobs:
         with:
           name: rihla-thanaweya-SUBSCRIPTIONS-V2
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
-          # Rebuild trigger: 2026-09-10 exact exit verification fix
+          # Rebuild trigger: Supabase publishable key corrected from 3QH2LP to 3QHh2LP
