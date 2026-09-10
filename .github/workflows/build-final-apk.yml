@@ -1,0 +1,69 @@
+name: Build Final Thanwia APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare final login UI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android_project/app/src/main/assets/www/index.html')
+          s=p.read_text(encoding='utf-8')
+          gate=re.search(r'<div id="authGate"[^>]*>.*?</div></div>',s,re.S)
+          if not gate: raise SystemExit('authGate not found')
+          new='''<div id="authGate" class="auth-gate auth-v2"><div class="auth-box auth-box-v2"><div class="auth-brand"><div class="auth-logo">🎓</div><div><b>رحلة الثانوية</b><span>مذاكرتك تبدأ من هنا</span></div></div><div class="auth-heading"><h2 id="authTitle">تسجيل الدخول</h2><p id="authSubtitle">ادخل لحفظ تقدمك ونتائجك وتشغيل كل المميزات.</p></div><div class="auth-switch"><button id="authLoginTab" class="active" onclick="setAuthMode('login')">تسجيل الدخول</button><button id="authSignupTab" onclick="setAuthMode('signup')">إنشاء حساب</button></div><div id="authNameWrap"><label class="auth-label" for="authName">الاسم</label><input id="authName" class="input auth-input" placeholder="اكتب اسمك" autocomplete="name"></div><label class="auth-label" for="authEmail">البريد الإلكتروني</label><input id="authEmail" class="input auth-input" type="email" placeholder="example@email.com" autocomplete="email"><label class="auth-label" for="authPassword">كلمة المرور</label><input id="authPassword" class="input auth-input" type="password" placeholder="6 أحرف على الأقل" autocomplete="current-password"><button id="authPrimaryBtn" class="btn auth-primary" onclick="authSignIn()">دخول آمن</button><button id="authResetBtn" class="auth-link" onclick="authResetPassword()">نسيت كلمة المرور؟ تغييرها الآن</button><p id="authMsg" class="auth-msg" role="status"></p><div class="auth-note">🔒 حسابك يحفظ تقدمك ونتائجك داخل التطبيق.</div></div></div>'''
+          s=s[:gate.start()]+new+s[gate.end():]
+          css='''<style id="rihla-auth-v2-css">.auth-v2{align-items:center!important;justify-content:center!important;padding:18px;background:linear-gradient(145deg,#061b36,#0d5ead)!important}.auth-box-v2{width:min(94%,430px);border-radius:28px!important;padding:22px!important;box-shadow:0 22px 60px rgba(0,0,0,.28)!important}.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}.auth-brand b{display:block;font-size:19px}.auth-brand span{display:block;color:#718096;font-size:11px;margin-top:3px}.auth-logo{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#246bff,#40c5ff);font-size:25px}.auth-heading h2{margin:0 0 6px;font-size:25px}.auth-heading p{margin:0 0 16px;color:#718096;font-size:12px}.auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;background:#f0f4fa;padding:5px;border-radius:15px;margin-bottom:16px}.auth-switch button{padding:11px;border-radius:11px;background:transparent;color:#65748a;font-weight:700}.auth-switch button.active{background:#fff;color:#246bff;box-shadow:0 3px 12px rgba(30,60,100,.09)}.auth-label{display:block;font-size:12px;font-weight:700;color:#4d5c70;margin:9px 2px 5px}.auth-input{margin:0 0 4px!important}.auth-primary{margin-top:12px;height:52px}.auth-link{display:block;margin:13px auto 4px;background:none;color:#246bff;font-size:12px;font-weight:700}.auth-msg{min-height:20px;margin:8px 0 0;text-align:center;font-size:12px}.auth-note{margin-top:12px;padding:10px;border-radius:12px;background:#f7f9fc;color:#7a8798;text-align:center;font-size:10px}</style>'''
+          s=re.sub(r'<style id="rihla-auth-v2-css">.*?</style>','',s,flags=re.S)
+          s=s.replace('</head>',css+'</head>',1)
+          marker='async function initAuth()'
+          i=s.find(marker)
+          if i<0: raise SystemExit('initAuth marker not found')
+          js='''function setAuthMode(mode){var signup=mode==='signup',w=document.getElementById('authNameWrap'),t=document.getElementById('authTitle'),sub=document.getElementById('authSubtitle'),p=document.getElementById('authPrimaryBtn'),r=document.getElementById('authResetBtn'),a=document.getElementById('authLoginTab'),b=document.getElementById('authSignupTab');w.style.display=signup?'block':'none';p.textContent=signup?'إنشاء حساب مجاني':'دخول آمن';p.onclick=signup?authSignUp:authSignIn;t.textContent=signup?'إنشاء حساب جديد':'تسجيل الدخول';sub.textContent=signup?'أنشئ حسابك واحفظ تقدمك ونتائجك.':'ادخل لحفظ تقدمك ونتائجك وتشغيل كل المميزات.';r.style.display=signup?'none':'block';a.classList.toggle('active',!signup);b.classList.toggle('active',signup);authMessage('')}\nasync function authResetPassword(){var email=(document.getElementById('authEmail')?.value||'').trim();if(!email){authMessage('اكتب بريدك الإلكتروني أولاً.');return}try{var x=await supabaseClient.auth.resetPasswordForEmail(email);if(x.error)throw x.error;authMessage('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني.')}catch(e){authMessage('تعذر إرسال الرابط حالياً. حاول مرة أخرى.')}}\n'''
+          s=s[:i]+js+s[i:]
+          guard='''<style id="rihla-no-color-picker">#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,.theme-options,.theme-title,.theme-sub{display:none!important}</style><script id="rihla-auth-final-guard">(function(){function clean(){['rihla-theme-entry','rihla-theme-picker','rihla-theme-toast'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove()});document.querySelectorAll('.theme-options,.theme-title,.theme-sub').forEach(function(e){e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true})})();</script>'''
+          if 'rihla-auth-final-guard' not in s: s=s.replace('</head>',guard+'</head>',1)
+          p.write_text(s,encoding='utf-8')
+          print('FINAL AUTH UI PREPARED')
+          PY
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android_project
+      - name: Verify APK
+        shell: bash
+        run: |
+          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
+          grep -q 'auth-v2' /tmp/index.html
+          grep -q 'authResetPassword' /tmp/index.html
+          grep -q 'تغيير كلمة المرور' /tmp/index.html
+          grep -q 'rihla-auth-final-guard' /tmp/index.html
+          test -s android_project/app/build/outputs/apk/debug/app-debug.apk
+          echo 'FINAL APK VERIFIED'
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Thanwia-Final-Fixed-APK
+          path: android_project/app/build/outputs/apk/debug/app-debug.apk
