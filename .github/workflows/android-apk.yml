@@ -23,7 +23,7 @@ jobs:
           import re
           p=Path('android_project/app/src/main/assets/www/index.html')
           s=p.read_text(encoding='utf-8')
-          key='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          key='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
           s=re.sub(r"SUPABASE_KEY='[^']*'", "SUPABASE_KEY='"+key+"'", s, count=1)
           if 'auth-v2' not in s:
               old=re.search(r'<div id="authGate" class="auth-gate">.*?</div></div>',s,re.S)
@@ -39,23 +39,14 @@ jobs:
               s=s[:i]+js+s[i:]
           guard='''<style id="rihla-no-color-picker">#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,.theme-options,.theme-title,.theme-sub{display:none!important}</style><script id="rihla-auth-final-guard">(function(){function clean(){['rihla-theme-entry','rihla-theme-picker','rihla-theme-toast'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove()});document.querySelectorAll('.theme-options,.theme-title,.theme-sub').forEach(function(e){e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true})})();</script>'''
           if 'rihla-auth-final-guard' not in s: s=s.replace('</head>',guard+'</head>',1)
-
-          # Safe source-level cleanup for the APK build: the duplicated review rules
-          # are identical, so retaining one copy cannot change behavior.
           due='.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}'
           done='.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
           s=s.replace(due,'').replace(done,'')
           marker='.error-item:last-child{border:0}'
           if marker in s: s=s.replace(marker,marker+due+done,1)
           else: s=s.replace('</style>',due+done+'</style>',1)
-
-          # Keep the existing Android exit bridge/functionality, but make its button
-          # a normal end-of-app button rather than a floating control.
-          exit_css='''<style id="rihla-exit-end-style">#rihlaExitApp{position:static!important;left:auto!important;bottom:auto!important;transform:none!important;width:calc(100% - 32px)!important;min-height:48px!important;margin:18px 16px 28px!important;padding:12px 16px!important;border-radius:15px!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:0 4px 12px rgba(20,50,90,.10)!important;font-size:14px!important}#rihlaExitApp:active{transform:scale(.99)!important}</style>'''
-          if 'id="rihla-exit-end-style"' not in s: s=s.replace('</head>',exit_css+'</head>',1)
-
           p.write_text(s,encoding='utf-8')
-          print('FINAL SOURCE PREPARED + REVIEW CSS CLEANED + EXIT BUTTON MOVED')
+          print('FINAL SOURCE PREPARED')
           PY
 
       - name: Verify cleaned UI before APK
@@ -66,10 +57,9 @@ jobs:
           s=Path('android_project/app/src/main/assets/www/index.html').read_text(encoding='utf-8')
           due='.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}'
           done='.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
-          assert s.count(due)==1, s.count(due)
-          assert s.count(done)==1, s.count(done)
-          assert 'id="rihla-exit-end-style"' in s
-          print('UI cleanup verification passed')
+          assert s.count(due)==1
+          assert s.count(done)==1
+          print('SOURCE UI verification passed')
           PY
 
       - name: Set up Java
@@ -88,24 +78,28 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
-      - name: Verify final APK
+      - name: Verify final APK has no legacy floating exit
         shell: bash
         run: |
           unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/index.html > /tmp/index.html
-          test -f android_project/app/src/main/assets/www/3d-modern.css
-          test -f android_project/app/src/main/assets/www/subscription-v2.js
-          test -f android_project/app/src/main/assets/www/admin-access-v2.js
+          test -f android_project/app/src/main/assets/www/modern-buttons-2027.css
+          test -f android_project/app/src/main/assets/www/ui-final-2027.js
           grep -q 'auth-v2' /tmp/index.html
           grep -q 'authResetPassword' /tmp/index.html
           grep -q 'rihla-auth-final-guard' /tmp/index.html
           grep -q 'تغيير كلمة المرور' /tmp/index.html
-          grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0' /tmp/index.html
-          grep -q 'rihla-exit-end-style' /tmp/index.html
+          grep -q 'sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0' /tmp/index.html
           grep -q 'subscription-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'admin-access-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'rihlaBack' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          grep -q 'rihlaExitApp' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          echo 'APK VERIFIED: auth + Supabase + 7-day trial + payment/admin + 3D + Android navigation + cleaned review CSS + end exit button'
+          if grep -Eq 'rihlaExitApp|rihlaExitV3|rihla-exit-button|rihla-exit-overlay|data-exit-app' /tmp/index.html android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java android_project/app/src/main/assets/www/modern-buttons-2027.css android_project/app/src/main/assets/www/ui-final-2027.js; then
+            echo 'ERROR: legacy floating exit code still exists'
+            exit 1
+          fi
+          grep -q 'rihla-exit-final-2027' android_project/app/src/main/assets/www/modern-buttons-2027.css
+          grep -q 'rihlaExitFinal2027' android_project/app/src/main/assets/www/ui-final-2027.js
+          test -s android_project/app/build/outputs/apk/debug/app-debug.apk
+          echo 'APK VERIFIED: legacy floating exit removed; only final end-of-app exit remains'
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
