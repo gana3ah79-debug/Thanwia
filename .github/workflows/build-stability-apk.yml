@@ -1,8 +1,6 @@
-name: Build Thanwia Clean Core APK
+name: Legacy Stability APK (manual)
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -10,16 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify current navigation core
-        shell: bash
-        run: |
-          set -e
-          grep -q 'app-core-v10.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-nav-fix-v5.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-navigation-logout-v6.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          test -f android_project/app/src/main/assets/www/app-core-v10.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,19 +17,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
-      - name: Build APK
-        run: gradle --no-daemon :app:assembleDebug
+      - run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
-      - name: Verify APK
-        shell: bash
-        run: |
-          set -e
-          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
-          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'explicitNavIntent'
-          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'storage:window.localStorage'
-          ! unzip -l "$APK" | grep -q 'assets/www/app-core-v8.js'
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Clean-Core-V10-APK
+          name: Thanwia-Legacy-Stability-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
