@@ -1,9 +1,8 @@
 package com.rihla.thanaweya;
-
 import android.app.*;import android.os.*;import android.webkit.*;import android.view.*;
 public class MainActivity extends Activity{
  WebView web;
- private static final String INJECT="javascript:(function(){try{var a=[['rihlaAIUX','aiux.js'],['rihlaSubscriptionV2','subscription-v2.js'],['rihlaAdminAccess','admin-access-v2.js'],['rihlaCoreV8','app-core-v8.js']];a.forEach(function(x){if(!document.getElementById(x[0])){var s=document.createElement('script');s.id=x[0];s.src='file:///android_asset/www/'+x[1];document.body.appendChild(s)}})}catch(e){console.log('inject',e)}})();";
+ private static final String INJECT="javascript:(function(){try{if(!document.getElementById('rihlaCoreV9')){var s=document.createElement('script');s.id='rihlaCoreV9';s.src='file:///android_asset/www/app-core-v9.js';document.body.appendChild(s)}}catch(e){console.log('core inject',e)}})();";
  private static final String BACK="javascript:(function(){try{var r=window.rihlaBack?window.rihlaBack():'exit';if(window.Android&&Android.backResult)Android.backResult(r)}catch(e){if(window.Android&&Android.backResult)Android.backResult('exit')}})();";
  @Override public void onCreate(Bundle b){super.onCreate(b);web=new WebView(this);web.setLayoutParams(new ViewGroup.LayoutParams(-1,-1));WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setDatabaseEnabled(true);s.setAllowFileAccess(true);s.setAllowContentAccess(true);s.setMediaPlaybackRequiresUserGesture(false);web.addJavascriptInterface(new AppBridge(this),"Android");web.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView v,String u){super.onPageFinished(v,u);v.evaluateJavascript(INJECT,null);}});setContentView(web);web.loadUrl("file:///android_asset/www/index.html");}
  @Override public void onBackPressed(){web.evaluateJavascript(BACK,null);}
