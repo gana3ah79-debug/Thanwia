@@ -1,56 +1,10 @@
-name: Inject Friends Challenge V5
-
+name: Legacy Friends Challenge Injection (disabled)
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  inject:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: inject friend challenge v5') }}
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Inject friends challenge scripts
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('android_project/app/src/main/assets/www/index.html')
-          s = p.read_text(encoding='utf-8')
-          tags = [
-              '<script src="friend-challenge-v5.js"></script>',
-              '<script src="friend-challenge-entry.js"></script>'
-          ]
-          changed = False
-          for tag in tags:
-              if tag not in s:
-                  marker = '</body>'
-                  if marker not in s:
-                      raise SystemExit('body marker not found')
-                  s = s.replace(marker, tag + marker, 1)
-                  changed = True
-                  print('Injected', tag)
-          if changed:
-              p.write_text(s, encoding='utf-8')
-          else:
-              print('Already injected')
-          PY
-
-      - name: Commit
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add android_project/app/src/main/assets/www/index.html
-          if git diff --cached --quiet; then
-            echo 'No changes to commit'
-          else
-            git commit -m 'feat: inject friend challenge v5'
-            git push
-          fi
+      - run: echo 'Legacy injection workflow disabled; friends challenge is loaded by aiux.js/admin-access-v2.js.'
