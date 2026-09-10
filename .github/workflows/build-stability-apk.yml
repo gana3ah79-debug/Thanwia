@@ -3,8 +3,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -12,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify clean navigation core
+      - name: Verify current navigation core
+        shell: bash
         run: |
-          grep -q 'rihlaCoreV8' android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'window.show=function(id)' android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'rihlaLogoutV8' android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'rihlaNavigationLogoutV6' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'rihlaNavFixV5' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'rihlaStabilityV4' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          set -e
+          grep -q 'app-core-v10.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-nav-fix-v5.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-navigation-logout-v6.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          test -f android_project/app/src/main/assets/www/app-core-v10.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,13 +33,16 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
       - name: Verify APK
+        shell: bash
         run: |
+          set -e
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -p "$APK" assets/www/app-core-v8.js | grep -q 'rihlaLogoutV8'
-          unzip -p "$APK" assets/www/app-core-v8.js | grep -q 'window.show=function(id)'
-          unzip -p "$APK" assets/www/app-core-v8.js | grep -q 'storage:window.localStorage'
+          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'explicitNavIntent'
+          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'if(current===''auth'||current==='onboarding'||current==='setup')navigate('home')'
+          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'storage:window.localStorage'
+          ! unzip -l "$APK" | grep -q 'assets/www/app-core-v8.js'
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Clean-Core-V8-APK
+          name: Thanwia-Clean-Core-V10-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
