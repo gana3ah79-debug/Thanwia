@@ -39,3 +39,4 @@ jobs:
         with:
           name: Thanwia-Native-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
+# trigger rebuild after native compile fix
