@@ -16,21 +16,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject V5 script
+      - name: Inject friends challenge scripts
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('android_project/app/src/main/assets/www/index.html')
           s = p.read_text(encoding='utf-8')
-          tag = '<script src="friend-challenge-v5.js"></script>'
-          if tag not in s:
-              marker = '</body>'
-              if marker not in s:
-                  raise SystemExit('body marker not found')
-              s = s.replace(marker, tag + marker, 1)
+          tags = [
+              '<script src="friend-challenge-v5.js"></script>',
+              '<script src="friend-challenge-entry.js"></script>'
+          ]
+          changed = False
+          for tag in tags:
+              if tag not in s:
+                  marker = '</body>'
+                  if marker not in s:
+                      raise SystemExit('body marker not found')
+                  s = s.replace(marker, tag + marker, 1)
+                  changed = True
+                  print('Injected', tag)
+          if changed:
               p.write_text(s, encoding='utf-8')
-              print('Injected friend-challenge-v5.js')
           else:
               print('Already injected')
           PY
