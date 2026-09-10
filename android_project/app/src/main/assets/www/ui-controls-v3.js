@@ -1,30 +1,38 @@
 (function(){'use strict';
-var URL='https://eclnddvupggxyythtpkv.supabase.co',KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0';
-function css(){if(document.getElementById('uiControlsV3Css'))return;var s=document.createElement('style');s.id='uiControlsV3Css';s.textContent=`
-:root{--ui-bg:#071b31;--ui-card:#102a47;--ui-card2:#163653;--ui-accent:#66c7d9;--ui-accent2:#4da8bd;--ui-text:#eef8fb;--ui-muted:#b9d0d9;--ui-dark:#0a2138}
-body,.app{color:var(--ui-text)}
-.rihla-light body,.rihla-light .app{background:linear-gradient(155deg,#e8edf2,#dce5ea 52%,#edf1f3)!important;color:#263844!important}
-.rihla-light .card,.rihla-light .subject,.rihla-light .stat,.rihla-light .skill-box,.rihla-light .badge,.rihla-light .list-item{background:linear-gradient(145deg,#f8fbfc,#e4ebef)!important;color:#263844!important;border-color:#cbd8de!important}
-.rihla-light .top,.rihla-light .hero{background:linear-gradient(135deg,#587887,#7696a3)!important;color:#fff!important}
-.rihla-light .nav{background:#e9eff2!important;border-color:#cbd8de!important}.rihla-light .nav button{color:#405b67!important}
-.rihla-light .input,.rihla-light .answer{background:#f7fafb!important;color:#263844!important;border-color:#cbd8de!important}
-.rihla-light .btn{background:linear-gradient(145deg,#668f9e,#527887)!important;color:#fff!important}
-#rihlaPageClose,#rihlaThemeToggle{position:fixed!important;top:50%!important;z-index:10003!important;transform:translateY(-50%)!important;width:46px!important;height:46px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:15px!important;font-weight:900!important;box-shadow:inset 2px 2px 5px rgba(255,255,255,.12),inset -4px -5px 8px rgba(0,0,0,.35),0 8px 20px rgba(0,0,0,.25)!important}
-#rihlaPageClose{left:calc(50% - 52px)!important;background:linear-gradient(145deg,#27465c,#102a42)!important;color:#eaf6f9!important;font-size:26px!important;padding:0!important}
-#rihlaThemeToggle{left:calc(50% + 6px)!important;background:linear-gradient(145deg,#355b70,#1c3a4e)!important;color:#eaf6f9!important;font-size:10px!important;padding:0 6px!important;width:62px!important}
-.rihla-light #rihlaPageClose{background:linear-gradient(145deg,#607f8c,#486672)!important;color:#fff!important}.rihla-light #rihlaThemeToggle{background:linear-gradient(145deg,#f2f6f8,#d9e3e8)!important;color:#39535e!important}
-#rihlaExitApp{display:none!important}
-#rihlaAdminEntry{position:relative!important;right:auto!important;top:auto!important;z-index:20!important;width:100%!important;margin:8px 0!important;padding:11px 14px!important;border:0!important;border-radius:15px!important;background:linear-gradient(145deg,#244b62,#16354c)!important;color:#eef8fb!important;font-size:12px!important;font-weight:900!important;box-shadow:inset 2px 2px 5px rgba(255,255,255,.12),inset -4px -5px 8px rgba(0,0,0,.28),0 7px 15px rgba(12,35,55,.18)!important}
-.rihla-light #rihlaAdminEntry{background:linear-gradient(145deg,#688b98,#527783)!important;color:#fff!important}
-.rihla-exit-button{display:block;width:100%;margin:12px 0 4px;padding:12px 14px;border:0;border-radius:15px;background:linear-gradient(145deg,#476477,#263f50);color:#f3f9fb;font-weight:900;font-size:12px;box-shadow:inset 2px 2px 5px rgba(255,255,255,.12),inset -4px -5px 8px rgba(0,0,0,.28),0 7px 15px rgba(12,35,55,.16)}
-.rihla-light .rihla-exit-button{background:linear-gradient(145deg,#7897a2,#5e7f8b);color:#fff}
-.rihla-exit-overlay{position:fixed;inset:0;z-index:10020;background:rgba(5,18,30,.72);display:flex;align-items:center;justify-content:center;padding:20px}.rihla-exit-card{width:min(360px,92vw);background:linear-gradient(145deg,#102a43,#173b57);color:#edf8fb;border-radius:24px;padding:22px;box-shadow:0 25px 70px rgba(0,0,0,.42);text-align:center}.rihla-exit-card h3{margin:0 0 8px}.rihla-exit-card p{color:#b9d0d9;font-size:12px}.rihla-exit-actions{display:grid;gap:9px;margin-top:16px}.rihla-exit-actions button{border:0;border-radius:13px;padding:12px;font-weight:900;font-size:12px}.rihla-logout{background:#3f7084;color:#fff}.rihla-finish{background:#29485e;color:#fff}.rihla-cancel{background:#193149;color:#b9d0d9}.rihla-light .rihla-exit-card{background:linear-gradient(145deg,#f4f8fa,#dce7ec);color:#263844}.rihla-light .rihla-exit-card p{color:#5a707a}.rihla-light .rihla-finish,.rihla-light .rihla-cancel{background:#d6e1e6;color:#38525d}
-` ;document.head.appendChild(s)}
-function theme(){var old=document.getElementById('rihlaThemeToggle');if(old)old.remove();var b=document.createElement('button');b.id='rihlaThemeToggle';document.body.appendChild(b);function set(light){document.documentElement.classList.toggle('rihla-light',light);b.textContent=light?'🌙 داكن':'☀️ فاتح';localStorage.setItem('rihlaTheme',light?'light':'dark')}set(localStorage.getItem('rihlaTheme')==='light');b.onclick=function(){set(!document.documentElement.classList.contains('rihla-light'))}}
-function closeButton(){var x=document.getElementById('rihlaPageClose');if(!x){x=document.createElement('button');x.id='rihlaPageClose';x.textContent='×';x.title='إغلاق الصفحة';x.onclick=function(){if(window.rihlaBack)window.rihlaBack();else if(typeof show==='function')show('home')};document.body.appendChild(x)}else{x.onclick=function(){if(window.rihlaBack)window.rihlaBack()}}}
-function adminPlace(){var b=document.getElementById('rihlaAdminEntry');if(!b)return;b.style.display='block';var badge=document.getElementById('subBadge');if(badge&&badge.parentNode){if(b.previousElementSibling!==badge)b.parentNode.insertBefore(b,badge);return}var home=document.getElementById('home');var c=home&&home.querySelector('.content');if(c&&b.parentNode!==c)c.insertBefore(b,c.firstChild)}
-function exitPlace(){if(document.getElementById('rihlaExitV3'))return;var all=document.querySelectorAll('body *');for(var i=0;i<all.length;i++){var t=(all[i].innerText||'').trim();if(t==='مش قادر أبدأ'||t.indexOf('مش قادر أبدأ')===0){var host=all[i].closest('.card,.hero,.box,.section,div')||all[i];var b=document.createElement('button');b.id='rihlaExitV3';b.className='rihla-exit-button';b.textContent='🚪 خروج';b.onclick=openExit;host.parentNode.insertBefore(b,host.nextSibling);return}}
+/* RIHLA UI CONTROLS V4 — stable navigation helpers only.
+   Theme/color pickers and floating exit controls are intentionally removed. */
+function css(){
+  if(document.getElementById('uiControlsV4Css'))return;
+  var s=document.createElement('style');s.id='uiControlsV4Css';s.textContent=`
+    #rihlaThemeToggle,#rihla-theme-entry,#rihla-theme-picker,#rihla-theme-toast,
+    .theme-options,.theme-title,.theme-sub,.color-picker,.color-options{display:none!important}
+    .rihla-exit-button,.rihla-exit-overlay{display:none!important}
+    #rihlaExitApp{position:static!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;float:none!important;width:calc(100% - 32px)!important;min-height:50px!important;margin:26px 16px 34px!important;padding:12px 16px!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid #e5a0a6!important;border-radius:16px!important;background:linear-gradient(145deg,#ea7b83,#d45d68)!important;color:#fff!important;font-size:14px!important;font-weight:900!important;box-shadow:0 6px 15px rgba(213,92,103,.14)!important;z-index:1!important}
+  `;document.head.appendChild(s)
 }
-function openExit(){if(document.getElementById('rihlaExitOverlay'))return;var o=document.createElement('div');o.id='rihlaExitOverlay';o.className='rihla-exit-overlay';o.innerHTML='<div class="rihla-exit-card"><h3>الخروج</h3><p>اختر ما تريد القيام به</p><div class="rihla-exit-actions"><button class="rihla-finish" id="rihlaFinalExit">خروج من التطبيق نهائيًا</button><button class="rihla-logout" id="rihlaLogout">تسجيل الخروج من الحساب</button><button class="rihla-cancel">إلغاء</button></div></div>';document.body.appendChild(o);o.querySelector('.rihla-cancel').onclick=function(){o.remove()};o.onclick=function(e){if(e.target===o)o.remove()};o.querySelector('#rihlaFinalExit').onclick=function(){if(window.Android&&Android.exitApp)Android.exitApp();else window.close()};o.querySelector('#rihlaLogout').onclick=async function(){var db=window.supabase?.createClient?window.supabase.createClient(URL,KEY):null;if(db)await db.auth.signOut();localStorage.removeItem('rihlaTheme');location.reload()}}
-function boot(){css();theme();closeButton();adminPlace();exitPlace()}
-var n=0,t=setInterval(function(){n++;boot();if(n>60)clearInterval(t)},400);new MutationObserver(function(){boot()}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});})();
+function closeButton(){
+  var x=document.getElementById('rihlaPageClose');
+  if(!x){x=document.createElement('button');x.id='rihlaPageClose';x.textContent='×';x.title='إغلاق الصفحة';x.onclick=function(){if(window.rihlaBack)window.rihlaBack();else if(typeof show==='function')show('home')};document.body.appendChild(x)}
+  else{x.onclick=function(){if(window.rihlaBack)window.rihlaBack()}}
+}
+function adminPlace(){
+  var b=document.getElementById('rihlaAdminEntry');if(!b)return;
+  b.style.display='block';
+  var badge=document.getElementById('subBadge');
+  if(badge&&badge.parentNode){if(b.previousElementSibling!==badge)badge.parentNode.insertBefore(b,badge);return}
+  var home=document.getElementById('home'),c=home&&home.querySelector('.content');
+  if(c&&b.parentNode!==c)c.insertBefore(b,c.firstChild)
+}
+function cleanLegacyUi(){
+  try{
+    ['rihlaThemeToggle','rihla-theme-entry','rihla-theme-picker','rihla-theme-toast','rihlaExitV3','rihlaExitOverlay'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove()});
+    document.querySelectorAll('.theme-options,.theme-title,.theme-sub,.color-picker,.color-options,.rihla-exit-button,.rihla-exit-overlay').forEach(function(e){e.remove()});
+    document.querySelectorAll('.card,.box,.section,section,div').forEach(function(e){
+      var t=(e.innerText||'').replace(/\s+/g,' ').trim();
+      if(t==='لون التطبيق 🎨'||t==='لون التطبيق'||t.indexOf('لون التطبيق 🎨')===0||t==='ترتيب الواجهة'||t.indexOf('ترتيب الواجهة')===0){e.style.display='none'}
+    });
+  }catch(e){}
+}
+function boot(){css();closeButton();adminPlace();cleanLegacyUi()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
