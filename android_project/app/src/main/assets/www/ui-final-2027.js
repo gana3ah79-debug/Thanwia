@@ -11,7 +11,7 @@ function authVisible(){
  return /تسجيل الدخول|إنشاء حساب|تسجيل حساب|نسيت كلمة السر|كلمة المرور|البريد الإلكتروني/.test(txt);
 }
 function removeLegacyExit(){
- var selectors=['[id*="rihlaExit"]','[id*="exitApp"]','[class*="rihla-exit"]','[class*="exit-button"]','[data-exit-app="true"]'];
+ var selectors=['[id*="rihlaExit"]','[id*="exitApp"]','[class*="rihla-exit"]','[class*="exit-button"]'];
  for(var i=0;i<selectors.length;i++)document.querySelectorAll(selectors[i]).forEach(function(e){if(e.id!=='rihlaExitFinal2027')e.remove();});
 }
 function addExit(){
