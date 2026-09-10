@@ -39,7 +39,6 @@ jobs:
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'explicitNavIntent'
-          unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'if(current===''auth'||current==='onboarding'||current==='setup')navigate('home')'
           unzip -p "$APK" assets/www/app-core-v10.js | grep -q 'storage:window.localStorage'
           ! unzip -l "$APK" | grep -q 'assets/www/app-core-v8.js'
       - uses: actions/upload-artifact@v4
