@@ -17,6 +17,7 @@ jobs:
           grep -q 'app-core-v10.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'app-core-v12.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'app-setup-v13.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'app-navigation-v14.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v9.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
@@ -24,6 +25,7 @@ jobs:
           ! grep -q 'app-navigation-logout-v6.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-stability-v4.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           test -s android_project/app/src/main/assets/www/app-setup-v13.js
+          test -s android_project/app/src/main/assets/www/app-navigation-v14.js
           grep -q 'function show(id)' android_project/app/src/main/assets/www/index.html
           grep -q 'SUPABASE_KEY' android_project/app/src/main/assets/www/index.html
       - uses: actions/setup-java@v4
@@ -57,11 +59,12 @@ jobs:
           unzip -p "$APK" assets/www/app-core-v10.js | grep -q '__rihlaCoreV10'
           unzip -p "$APK" assets/www/app-core-v12.js | grep -q '__rihlaCoreV12'
           unzip -p "$APK" assets/www/app-setup-v13.js | grep -q '__rihlaSetupV13'
+          unzip -p "$APK" assets/www/app-navigation-v14.js | grep -q '__rihlaNavV14'
           ! unzip -l "$APK" | grep -q 'assets/www/app-core-v9.js'
           ! unzip -l "$APK" | grep -q 'assets/www/subscription.js'
           unzip -p "$APK" assets/www/index.html | grep -q 'function show(id)'
           unzip -p "$APK" assets/www/index.html | grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Clean-Final-V13-APK
+          name: Thanwia-Clean-Final-V14-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
