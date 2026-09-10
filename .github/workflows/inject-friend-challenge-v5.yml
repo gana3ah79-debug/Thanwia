@@ -1,0 +1,49 @@
+name: Inject Friends Challenge V5
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inject:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: inject friend challenge v5') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject V5 script
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script src="friend-challenge-v5.js"></script>'
+          if tag not in s:
+              marker = '</body>'
+              if marker not in s:
+                  raise SystemExit('body marker not found')
+              s = s.replace(marker, tag + marker, 1)
+              p.write_text(s, encoding='utf-8')
+              print('Injected friend-challenge-v5.js')
+          else:
+              print('Already injected')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'feat: inject friend challenge v5'
+            git push
+          fi
