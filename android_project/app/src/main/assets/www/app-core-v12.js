@@ -2,11 +2,11 @@
 'use strict';
 if(window.__rihlaCoreV12)return;window.__rihlaCoreV12=true;
 var navLockUntil=0;
-var ids=['home','plan','session','quizzes','analysis','achievements','notifications','friends','friendChallenge','quiz'];
+var ids=['onboarding','setup','home','plan','session','quizzes','analysis','achievements','notifications','friends','friendChallenge','quiz'];
 function activeScreen(){return window.__rihlaCurrentScreen||document.querySelector('.screen.active')?.id||''}
 function go(id,explicit){
   if(!ids.includes(id)||!document.getElementById(id))return false;
-  if(!window.__rihlaAuthUser&&!["onboarding","setup","auth"].includes(id))return false;
+  if(!window.__rihlaAuthUser&&!['onboarding','setup','auth'].includes(id))return false;
   if(!explicit&&id==='home'&&Date.now()<navLockUntil&&activeScreen()!=='home')return true;
   navLockUntil=Date.now()+1200;
   var all=document.querySelectorAll('.screen');
