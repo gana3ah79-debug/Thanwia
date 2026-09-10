@@ -1,8 +1,8 @@
-name: Build Thanwia Stability APK
+name: Build Thanwia Comprehensive Stability APK
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify stability layer
+      - name: Verify stability and logout layer
         run: |
-          grep -q 'rihlaStabilityV3' android_project/app/src/main/assets/www/app-stability-v3.js
-          grep -q 'getSession' android_project/app/src/main/assets/www/app-stability-v3.js
-          grep -q 'more' android_project/app/src/main/assets/www/app-stability-v3.js
-          grep -q 'app-stability-v3.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'rihlaStabilityV4' android_project/app/src/main/assets/www/app-stability-v4.js
+          grep -q 'rihlaLogout' android_project/app/src/main/assets/www/app-stability-v4.js
+          grep -q 'app-stability-v4.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'تسجيل الخروج' android_project/app/src/main/assets/www/ui-final-2027.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,10 +30,11 @@ jobs:
         working-directory: android_project
       - name: Verify APK
         run: |
-          test -s android_project/app/build/outputs/apk/debug/app-debug.apk
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/app-stability-v3.js | grep -q 'rihlaStabilityV3'
-          unzip -p android_project/app/build/outputs/apk/debug/app-debug.apk assets/www/app-stability-v3.js | grep -q 'getSession'
+          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -p "$APK" assets/www/app-stability-v4.js | grep -q 'rihlaStabilityV4'
+          unzip -p "$APK" assets/www/app-stability-v4.js | grep -q 'rihlaLogout'
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Stability-APK
+          name: Thanwia-Comprehensive-Stability-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
