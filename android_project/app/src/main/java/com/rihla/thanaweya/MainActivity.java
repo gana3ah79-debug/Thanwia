@@ -1,6 +1,6 @@
 package com.rihla.thanaweya;
 import android.app.*;import android.os.*;import android.webkit.*;import android.view.*;
-public class MainActivity{
+public class MainActivity extends Activity{
  WebView web;
  private static final String INJECT="javascript:(function(){try{var a=[['rihlaAIUX','aiux.js'],['rihlaSubscriptionV2','subscription-v2.js'],['rihlaAdminAccess','admin-access-v2.js'],['rihlaCoreV10','app-core-v10.js'],['rihlaCoreV12','app-core-v12.js'],['rihlaSetupV13','app-setup-v13.js'],['rihlaNavFinal','app-navigation-final.js']];function n(i){if(i>=a.length)return;var x=a[i],id=x[0],f=x[1];if(document.getElementById(id)){n(i+1);return}var s=document.createElement('script');s.id=id;s.onload=function(){n(i+1)};s.onerror=function(){n(i+1)};s.src='file:///android_asset/www/'+f;document.body.appendChild(s)}n(0)}catch(e){console.log('module loader',e)}})();";
  private static final String BACK="javascript:(function(){try{var r=window.rihlaBack?window.rihlaBack():'exit';if(window.Android&&Android.backResult)Android.backResult(r)}catch(e){if(window.Android&&Android.backResult)Android.backResult('exit')}})();";
