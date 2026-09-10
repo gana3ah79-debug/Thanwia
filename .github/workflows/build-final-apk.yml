@@ -14,14 +14,17 @@ jobs:
         shell: bash
         run: |
           set -e
-          grep -q 'app-navigation-final.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'app-navigation-bootstrap.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'app-core-v10.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          grep -q 'app-core-v12.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'app-setup-v13.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'app-navigation-hard-v4.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-navigation-final.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-core-v12.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-navigation-v14.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v9.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          test -s android_project/app/src/main/assets/www/app-navigation-final.js
+          test -s android_project/app/src/main/assets/www/app-navigation-bootstrap.js
+          test -s android_project/app/src/main/assets/www/app-navigation-hard-v4.js
           test -s android_project/app/src/main/assets/www/app-setup-v13.js
       - name: Normalize Supabase key and remove duplicated CSS
         shell: bash
@@ -61,9 +64,12 @@ jobs:
           set -e
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -p "$APK" assets/www/app-navigation-final.js | grep -q '__rihlaNavigationFinal'
+          unzip -p "$APK" assets/www/app-navigation-bootstrap.js | grep -q '__rihlaNavigationReserved'
+          unzip -p "$APK" assets/www/app-navigation-hard-v4.js | grep -q '__rihlaHardNavV4'
           unzip -p "$APK" assets/www/app-setup-v13.js | grep -q '__rihlaSetupV13'
           unzip -p "$APK" assets/www/index.html | grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+          ! unzip -l "$APK" | grep -q 'assets/www/app-navigation-final.js'
+          ! unzip -l "$APK" | grep -q 'assets/www/app-core-v12.js'
           ! unzip -l "$APK" | grep -q 'assets/www/app-navigation-v14.js'
           ! unzip -l "$APK" | grep -q 'assets/www/app-core-v9.js'
           ! unzip -l "$APK" | grep -q 'assets/www/subscription.js'
@@ -71,5 +77,5 @@ jobs:
           test "$(unzip -p "$APK" assets/www/index.html | grep -o '\.review-done{' | wc -l)" -eq 1
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Root-Fix-APK
+          name: Thanwia-Navigation-Fix-V4-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
