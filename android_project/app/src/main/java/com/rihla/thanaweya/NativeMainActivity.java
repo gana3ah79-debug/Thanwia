@@ -67,7 +67,7 @@ public class NativeMainActivity extends Activity {
     void showQuestion(){shell(currentSubject+"  •  "+(qIndex+1)+" / "+questions.length,true);clear();
         LinearLayout progress=card();TextView p=text("التقدم  "+qIndex+" / "+questions.length,12,MUTED);progress.addView(p);ProgressBar pb=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);pb.setMax(questions.length);pb.setProgress(qIndex);progress.addView(pb,new LinearLayout.LayoutParams(-1,dp(8)));body.addView(progress);
         body.addView(text(questions[qIndex][0],22,TEXT));body.addView(text("اختر إجابة واحدة فقط",12,MUTED));
-        for(int i=1;i<=4;i++){final int k=i;Button a=button(questions[qIndex][i],TEXT,WHITE);a.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);a.setPadding(dp(18),0,dp(18),0);a.setOnClickListener(v->{selected=k;for(int j=1;j<=4;j++){}checkAnswer(k);});body.addView(a,new LinearLayout.LayoutParams(-1,dp(58)));}
+        for(int i=1;i<=4;i++){final int k=i;Button a=button(questions[qIndex][i],TEXT,WHITE);a.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);a.setPadding(dp(18),0,dp(18),0);a.setOnClickListener(v->{selected=k;checkAnswer(k);});body.addView(a,new LinearLayout.LayoutParams(-1,dp(58)));}
         TextView tip=text("💡 ركّز في السؤال قبل الاختيار.",13,MUTED);tip.setPadding(dp(5),dp(16),dp(5),dp(5));body.addView(tip);
     }
     void checkAnswer(int k){boolean correct=isCorrect(qIndex,k);if(correct)score++;pref.edit().putInt("points",pref.getInt("points",0)+(correct?10:2)).apply();
@@ -89,7 +89,7 @@ public class NativeMainActivity extends Activity {
 
     void showProgress(){page=3;shell("تقدمي",true);clear();body.addView(heading("📊 لوحة تقدمك"));int tests=pref.getInt("tests",0),last=pref.getInt("lastScore",0),total=pref.getInt("lastTotal",questions.length);int pct=total==0?0:last*100/total;
         LinearLayout hero=card();hero.setGravity(Gravity.CENTER);hero.addView(text(pct+"%",42,BLUE));TextView h=text("آخر نتيجة",14,MUTED);h.setGravity(Gravity.CENTER);hero.addView(h);body.addView(hero);
-        LinearLayout stats=card();stat(stats,"📝",String.valueOf(tests),"اختبارات");stat(stats,"🎯",last+" / "+total,"آخر نتيجة");stat(stats,"⭐",String.valueOf(p.getInt("points",0)),"نقاط");body.addView(stats);
+        LinearLayout stats=card();stat(stats,"📝",String.valueOf(tests),"اختبارات");stat(stats,"🎯",last+" / "+total,"آخر نتيجة");stat(stats,"⭐",String.valueOf(pref.getInt("points",0)),"نقاط");body.addView(stats);
         LinearLayout advice=card();advice.addView(text("نصيحة للمراجعة 💡",17,TEXT));advice.addView(text(last>=3?"مستواك جيد. جرّب مادة جديدة وحافظ على الاستمرارية.":"ارجع لشرح الأسئلة التي أخطأت فيها، ثم أعد الاختبار لتثبيت المعلومة.",14,MUTED));body.addView(advice);Button b=button("📝 ابدأ اختباراً الآن",WHITE,BLUE);b.setOnClickListener(v->showExams());body.addView(b);addNav();
     }
 
@@ -103,6 +103,6 @@ public class NativeMainActivity extends Activity {
     void showSettings(){page=4;shell("الإعدادات",true);clear();body.addView(heading("⚙️ إعدادات التطبيق"));Button pass=button("🔑 تغيير كلمة السر",TEXT,WHITE);pass.setOnClickListener(v->showChangePassword());body.addView(pass);Button about=button("ℹ️ عن رحلة الثانوية",TEXT,WHITE);about.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("رحلة الثانوية").setMessage("نسخة Native Android سريعة بدون WebView.\n\nالتعلم • الاختبارات • الشرح • التقدم • تحدي الأصدقاء").setPositiveButton("حسناً",null).show());body.addView(about);Button exit=button("🚪 خروج من التطبيق",WHITE,RED);exit.setOnClickListener(v->finishAndRemoveTask());body.addView(exit);}
     void showChangePassword(){page=4;shell("تغيير كلمة السر",true);clear();body.addView(heading("🔑 تغيير كلمة السر"));LinearLayout c=card();EditText oldp=new EditText(this);oldp.setHint("كلمة السر الحالية");oldp.setInputType(129);c.addView(oldp);EditText np=new EditText(this);np.setHint("كلمة السر الجديدة");np.setInputType(129);c.addView(np);EditText cp=new EditText(this);cp.setHint("تأكيد كلمة السر الجديدة");cp.setInputType(129);c.addView(cp);Button save=button("حفظ كلمة السر",WHITE,BLUE);save.setOnClickListener(v->{if(np.getText().length()<4)toast("كلمة السر الجديدة قصيرة جداً");else if(!np.getText().toString().equals(cp.getText().toString()))toast("التأكيد غير مطابق");else toast("تم تحديث كلمة السر محلياً ✅");});c.addView(save);body.addView(c);}
     void goBack(){if(page==0)finishAndRemoveTask();else showHome();}
-    public void onBackPressed(){goBack();}
     void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+    @Override public void onBackPressed(){goBack();}
 }
