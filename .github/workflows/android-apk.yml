@@ -1,8 +1,6 @@
-name: Build Android APK
+name: Build Legacy Thanwia APK (manual)
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -10,29 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify V8 source
-        run: |
-          set -e
-          KEY='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          grep -q "$KEY" android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'rihlaCoreV8' android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'rihlaLogoutV8' android_project/app/src/main/assets/www/app-core-v8.js
-          grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-stability-v4.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-      - name: Normalize legacy Supabase key
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('android_project/app/src/main/assets/www/index.html')
-          s=p.read_text(encoding='utf-8')
-          bad='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
-          good='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
-          s=s.replace(bad,good)
-          p.write_text(s,encoding='utf-8')
-          assert bad not in s and good in s
-          PY
-      - uses: actions/setup-java@v4
+      - name: Build legacy APK
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
@@ -41,17 +18,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
-      - name: Build APK
-        run: gradle --no-daemon :app:assembleDebug
-        working-directory: android_project
-      - name: Verify APK
-        run: |
-          APK=android_project/app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
-          unzip -p "$APK" assets/www/app-core-v8.js | grep -q 'rihlaLogoutV8'
-          unzip -p "$APK" assets/www/app-core-v8.js | grep -q 'window.show=function(id)'
-          unzip -p "$APK" assets/www/index.html | grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
+      - run: gradle --no-daemon -p android_project :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Final-V8-APK
+          name: Thanwia-Legacy-Manual-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
