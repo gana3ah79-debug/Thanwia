@@ -105,4 +105,4 @@ jobs:
         with:
           name: rihla-thanaweya-SUBSCRIPTIONS-V2
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
-          # Rebuild trigger: 2026-09-10 fresh build
+          # Rebuild trigger: 2026-09-10 login-exit fix
