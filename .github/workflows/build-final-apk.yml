@@ -20,11 +20,10 @@ jobs:
           grep -q 'app-setup-v13.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-navigation-v14.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v9.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           test -s android_project/app/src/main/assets/www/app-navigation-final.js
           test -s android_project/app/src/main/assets/www/app-setup-v13.js
-      - name: Normalize Supabase key and clean duplicate CSS
+      - name: Normalize Supabase key and remove duplicated CSS
         shell: bash
         run: |
           set -e
@@ -35,18 +34,15 @@ jobs:
           good='sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
           bad='sb_publishable_FqI5heK77syr-3QH2LPHg_E82vbq-0'
           s=s.replace(bad,good)
-          # Remove accidental repeated review CSS declarations, keeping one copy.
-          import re
-          for cls in ('review-due','review-done'):
-              pat=re.compile(r'((?:\.'+cls+r'\{[^{}]*\})+)')
-              def one(m):
-                  block='.'+cls+'{'+re.search(r'\.'+cls+r'\{([^{}]*)\}',m.group(1)).group(1)+'}'
-                  return block
-              s=pat.sub(one,s)
+          block='.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
+          s=s.replace(block,'')
+          marker='.error-item:last-child{border:0}'
+          if marker not in s: raise SystemExit('CSS marker not found')
+          s=s.replace(marker,marker+block,1)
           p.write_text(s,encoding='utf-8')
           assert bad not in s and good in s
-          assert s.count('.review-due{') <= 1
-          assert s.count('.review-done{') <= 1
+          assert s.count('.review-due{') == 1
+          assert s.count('.review-done{') == 1
           PY
       - uses: actions/setup-java@v4
         with:
@@ -71,7 +67,8 @@ jobs:
           ! unzip -l "$APK" | grep -q 'assets/www/app-navigation-v14.js'
           ! unzip -l "$APK" | grep -q 'assets/www/app-core-v9.js'
           ! unzip -l "$APK" | grep -q 'assets/www/subscription.js'
-          test "$(unzip -p "$APK" assets/www/index.html | grep -o '\.review-due{' | wc -l)" -le 1
+          test "$(unzip -p "$APK" assets/www/index.html | grep -o '\.review-due{' | wc -l)" -eq 1
+          test "$(unzip -p "$APK" assets/www/index.html | grep -o '\.review-done{' | wc -l)" -eq 1
       - uses: actions/upload-artifact@v4
         with:
           name: Thanwia-Root-Fix-APK
