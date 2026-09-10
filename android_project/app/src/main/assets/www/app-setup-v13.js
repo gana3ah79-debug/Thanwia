@@ -36,14 +36,12 @@ function wrapFinishSetup(){
   if(typeof window.finishSetup!=='function'||window.finishSetup.__v13)return;
   var original=window.finishSetup;
   function wrapped(){
+    var s=stateObj();
+    if(s){s.setupComplete=true;saveState()}
     original.apply(this,arguments);
     setTimeout(function(){
-      var s=stateObj();
-      if(s&&document.getElementById('home')?.classList.contains('active')){
-        s.setupComplete=true;
-        saveState();
-      }
-    },50);
+      if(needsSetup())openSetup();
+    },120);
   }
   wrapped.__v13=true;
   window.finishSetup=wrapped;
