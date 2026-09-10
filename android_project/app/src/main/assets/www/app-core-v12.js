@@ -34,21 +34,11 @@ window.show=function(id){return go(id,id==='home')};
 window.showScreen=window.show;
 function install(){
   var nav=document.getElementById('nav');
-  if(nav&&!nav.__v12){
+  if(nav&&!nav.__v12&&!window.__rihlaFinalNavigationReserved){
     nav.__v12=true;
-    nav.querySelectorAll('button[data-screen],button.plus').forEach(function(b){
-      var id=b.dataset.screen||(b.classList.contains('plus')?'session':'');
-      if(id)b.removeAttribute('onclick');
-    });
+    nav.querySelectorAll('button[data-screen],button.plus').forEach(function(b){b.removeAttribute('onclick')});
+    nav.addEventListener('click',function(e){var b=e.target.closest('button[data-screen],button.plus');if(!b)return;var id=b.dataset.screen||(b.classList.contains('plus')?'session':'');if(!id)return;e.preventDefault();e.stopImmediatePropagation();go(id,true)},true);
   }
-  document.addEventListener('click',function(e){
-    var b=e.target.closest('#nav button[data-screen],#nav button.plus');
-    if(!b)return;
-    var id=b.dataset.screen||(b.classList.contains('plus')?'session':'');
-    if(!id)return;
-    e.preventDefault();e.stopImmediatePropagation();
-    go(id,true);
-  },true);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 setTimeout(install,50);setTimeout(install,500);setTimeout(install,1500);
