@@ -10,11 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify single source controller
+      - name: Verify clean source
         shell: bash
         run: |
           set -e
-          grep -q 'app-core-v9.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'app-core-v10.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          ! grep -q 'app-core-v9.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-core-v8.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           ! grep -q 'app-nav-fix-v5.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
@@ -47,12 +48,15 @@ jobs:
       - name: Verify APK
         shell: bash
         run: |
+          set -e
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -p "$APK" assets/www/app-core-v9.js | grep -q 'rihlaCoreV9'
+          unzip -p "$APK" assets/www/app-core-v10.js | grep -q '__rihlaCoreV10'
+          ! unzip -l "$APK" | grep -q 'assets/www/app-core-v9.js'
+          ! unzip -l "$APK" | grep -q 'assets/www/subscription.js'
           unzip -p "$APK" assets/www/index.html | grep -q 'function show(id)'
           unzip -p "$APK" assets/www/index.html | grep -q 'sb_publishable_FqI5heK77syr-3QHh2LPHg_E82vbq-0'
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Source-Clean-V9-APK
+          name: Thanwia-Clean-Final-V10-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
