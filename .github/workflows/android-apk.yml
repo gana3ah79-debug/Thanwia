@@ -92,10 +92,21 @@ jobs:
           grep -q 'subscription-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'admin-access-v2.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
           grep -q 'rihlaBack' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          if grep -Eq 'rihlaExitApp|rihlaExitV3|rihla-exit-button|rihla-exit-overlay|data-exit-app' /tmp/index.html android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java android_project/app/src/main/assets/www/modern-buttons-2027.css android_project/app/src/main/assets/www/ui-final-2027.js; then
-            echo 'ERROR: legacy floating exit code still exists'
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          files=[Path('/tmp/index.html'),Path('android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java'),Path('android_project/app/src/main/assets/www/modern-buttons-2027.css'),Path('android_project/app/src/main/assets/www/ui-final-2027.js')]
+          exact=['rihlaExitApp','rihlaExitV3','rihla-exit-button','rihla-exit-overlay','data-exit-app']
+          hits=[]
+          for p in files:
+              s=p.read_text(encoding='utf-8',errors='ignore')
+              for token in exact:
+                  if token in s: hits.append(f'{p}: {token}')
+          if hits:
+              print('ERROR: legacy floating exit code still exists')
+              print('\n'.join(hits))
+              raise SystemExit(1)
+          print('No legacy floating-exit tokens found in APK/source files')
+          PY
           grep -q 'rihla-exit-final-2027' android_project/app/src/main/assets/www/modern-buttons-2027.css
           grep -q 'rihlaExitFinal2027' android_project/app/src/main/assets/www/ui-final-2027.js
           test -s android_project/app/build/outputs/apk/debug/app-debug.apk
@@ -105,4 +116,4 @@ jobs:
         with:
           name: rihla-thanaweya-SUBSCRIPTIONS-V2
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
-          # Rebuild trigger: 2026-09-10 login-exit fix
+          # Rebuild trigger: 2026-09-10 exact exit verification fix
