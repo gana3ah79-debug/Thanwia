@@ -1,4 +1,4 @@
-name: Build Thanwia Comprehensive Stability APK
+name: Build Thanwia Clean Core APK
 on:
   workflow_dispatch:
   push:
@@ -10,12 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify stability and logout layer
+      - name: Verify clean navigation core
         run: |
-          grep -q 'rihlaStabilityV4' android_project/app/src/main/assets/www/app-stability-v4.js
-          grep -q 'rihlaLogout' android_project/app/src/main/assets/www/app-stability-v4.js
-          grep -q 'app-stability-v4.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
-          grep -q 'تسجيل الخروج' android_project/app/src/main/assets/www/ui-final-2027.js
+          grep -q 'rihlaCoreV7' android_project/app/src/main/assets/www/app-core-v7.js
+          grep -q 'cleanScreens' android_project/app/src/main/assets/www/app-core-v7.js
+          grep -q 'window.show=function(id)' android_project/app/src/main/assets/www/app-core-v7.js
+          grep -q 'app-core-v7.js' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java
+          grep -q 'rihlaNavigationLogoutV6' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java && exit 1 || true
+          grep -q 'rihlaNavFixV5' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java && exit 1 || true
+          grep -q 'rihlaStabilityV4' android_project/app/src/main/java/com/rihla/thanaweya/MainActivity.java && exit 1 || true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,13 +31,14 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android_project
-      - name: Verify APK
+      - name: Verify APK has one navigation controller
         run: |
           APK=android_project/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -p "$APK" assets/www/app-stability-v4.js | grep -q 'rihlaStabilityV4'
-          unzip -p "$APK" assets/www/app-stability-v4.js | grep -q 'rihlaLogout'
+          unzip -p "$APK" assets/www/app-core-v7.js | grep -q 'cleanScreens'
+          unzip -p "$APK" assets/www/app-core-v7.js | grep -q 'rihlaLogout'
+          unzip -p "$APK" classes.dex >/dev/null
       - uses: actions/upload-artifact@v4
         with:
-          name: Thanwia-Comprehensive-Stability-APK
+          name: Thanwia-Clean-Core-V7-APK
           path: android_project/app/build/outputs/apk/debug/app-debug.apk
