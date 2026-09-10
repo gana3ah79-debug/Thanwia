@@ -1,0 +1,83 @@
+name: Clean Review CSS and Exit Button
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'fix: clean duplicated review css and move exit button to app end') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clean duplicated review CSS and adjust exit button
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('android_project/app/src/main/assets/www/index.html')
+          s = p.read_text(encoding='utf-8')
+
+          due = '.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}'
+          done = '.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
+
+          # These two rules were accidentally repeated many times. Keep exactly one
+          # copy of each and leave every other section/function untouched.
+          s = s.replace(due, '')
+          s = s.replace(done, '')
+          marker = '.error-item:last-child{border:0}'
+          canonical = marker + due + done
+          if marker in s:
+              s = s.replace(marker, canonical, 1)
+          else:
+              # Defensive fallback: restore the rules at the end of the first style block.
+              s = s.replace('</style>', due + done + '</style>', 1)
+
+          # Keep the existing Android exit bridge/functionality, but make the normal
+          # exit control an ordinary button at the end of the document instead of a
+          # floating control above the bottom navigation.
+          exit_css = '''<style id="rihla-exit-end-style">#rihlaExitApp{position:static!important;left:auto!important;bottom:auto!important;transform:none!important;width:calc(100% - 32px)!important;min-height:48px!important;margin:18px 16px 28px!important;padding:12px 16px!important;border-radius:15px!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:0 4px 12px rgba(20,50,90,.10)!important;font-size:14px!important}#rihlaExitApp:active{transform:scale(.99)!important}</style>'''
+          if 'id="rihla-exit-end-style"' not in s:
+              if '</head>' in s:
+                  s = s.replace('</head>', exit_css + '</head>', 1)
+              else:
+                  raise SystemExit('head marker not found')
+
+          p.write_text(s, encoding='utf-8')
+          print('Review CSS cleaned and exit button placement style ensured.')
+          PY
+
+      - name: Verify
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('android_project/app/src/main/assets/www/index.html').read_text(encoding='utf-8')
+          due = '.review-due{background:#fff7e6;border:1px solid #ffd27a;border-radius:15px;padding:11px;margin-top:10px}'
+          done = '.review-done{background:#eefaf5;border:1px solid #b9ead5;border-radius:15px;padding:10px;margin-top:10px}'
+          assert s.count(due) == 1, f'review-due copies: {s.count(due)}'
+          assert s.count(done) == 1, f'review-done copies: {s.count(done)}'
+          assert 'id="rihla-exit-end-style"' in s
+          print('Verification passed:', len(s), 'bytes')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android_project/app/src/main/assets/www/index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'fix: clean duplicated review css and move exit button to app end'
+            git push
+          fi
