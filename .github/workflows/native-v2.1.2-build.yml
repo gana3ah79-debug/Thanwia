@@ -1,7 +1,7 @@
 name: Native Android Build
 on:
   push:
-    branches: [native-v2.1.2-full]
+    branches: [native-v2.1.2-full, native-v2.1.2-latest-full]
   workflow_dispatch:
 jobs:
   build:
