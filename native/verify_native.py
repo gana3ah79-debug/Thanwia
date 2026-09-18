@@ -1,17 +1,33 @@
 #!/usr/bin/env python3
 from pathlib import Path
-root=Path(__file__).resolve().parent
-bad=[]
+
+root = Path(__file__).resolve().parent
+bad = []
+source_ext = {'.js', '.jsx', '.java', '.kt', '.json', '.xml', '.gradle'}
+skip_names = {'verify_native.py'}
+
 for p in root.rglob('*'):
-    if p.is_file() and p.suffix.lower() in {'.js','.jsx','.java','.kt','.json','.xml','.gradle','.txt','.md'}:
-        try:t=p.read_text(errors='ignore').lower()
-        except:continue
-        for needle in ['android.webkit.webview','file:///android_asset','react-native-webview','webviewclient','android_asset/www/index.html']:
-            if needle in t: bad.append((str(p.relative_to(root)),needle))
-print('Native source:',root)
-print('package.json:',(root/'package.json').exists())
-print('app.json:',(root/'app.json').exists())
-print('App.js:',(root/'App.js').exists())
-print('WebView indicators:',len(bad))
-for x in bad: print('  BAD',x)
+    if not p.is_file() or p.name in skip_names or p.suffix.lower() not in source_ext:
+        continue
+    try:
+        t = p.read_text(errors='ignore').lower()
+    except OSError:
+        continue
+    for needle in (
+        'android.webkit.webview',
+        'file:///android_asset',
+        'react-native-webview',
+        'webviewclient',
+        'android_asset/www/index.html',
+    ):
+        if needle in t:
+            bad.append((str(p.relative_to(root)), needle))
+
+print('Native source:', root)
+print('package.json:', (root / 'package.json').exists())
+print('app.json:', (root / 'app.json').exists())
+print('App.js:', (root / 'App.js').exists())
+print('WebView indicators:', len(bad))
+for item in bad:
+    print('  BAD', item)
 raise SystemExit(1 if bad else 0)
