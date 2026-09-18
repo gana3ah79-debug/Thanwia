@@ -30,6 +30,8 @@ function Title({title,sub}){return <View style={s.top}><Text style={s.topTitle}>
 function Stat({value,label}){return <View style={s.stat}><Text style={s.statValue}>{value}</Text><Text style={s.muted}>{label}</Text></View>}
 function Field({value,onChangeText,placeholder,keyboardType}){return <TextInput value={String(value??'')} onChangeText={onChangeText} placeholder={placeholder} keyboardType={keyboardType} style={s.input} placeholderTextColor="#9aa6b7"/>}
 
+class AppErrorBoundary extends React.Component{constructor(p){super(p);this.state={error:null}}static getDerivedStateFromError(error){return {error}}componentDidCatch(error,info){console.log('Rihla runtime error',error,info)}render(){if(this.state.error)return <View style={s.centerPage}><Text style={s.h1}>حدث خطأ أثناء تشغيل التطبيق</Text><Text style={s.muted}>{String(this.state.error?.message||this.state.error)}</Text><Btn onPress={()=>this.setState({error:null})}>إعادة المحاولة</Btn></View>;return this.props.children}}
+
 export default function App(){
  const [screen,setScreen]=useState('onboarding');
  const [state,setState]=useState(defaultState);
@@ -42,11 +44,7 @@ export default function App(){
 
  const patch=(p)=>setState(x=>({...x,...p}));
  const notify=(m)=>{setToast(m);setTimeout(()=>setToast(''),2200)};
- useEffect(()=>{(async()=>{
-   const {data}=await supabase.auth.getSession(); setSession(data.session||null);
-   if(data.session){await loadProfile(data.session.user.id)}
-   setBoot(false);
- })(); const {data}=supabase.auth.onAuthStateChange(async(_e,sess)=>{setSession(sess);if(sess) await loadProfile(sess.user.id);});return()=>data.subscription.unsubscribe()},[]);
+ useEffect(()=>{let alive=true;(async()=>{try{const {data}=await supabase.auth.getSession();if(!alive)return;setSession(data.session||null);if(data.session){await loadProfile(data.session.user.id)}}catch(e){console.log('bootstrap error',e)}finally{if(alive)setBoot(false)}})();const {data}=supabase.auth.onAuthStateChange((_e,sess)=>{setSession(sess);if(sess)setTimeout(()=>{if(alive)loadProfile(sess.user.id).catch(e=>console.log('profile load error',e))},0)});return()=>{alive=false;data.subscription.unsubscribe()}},[]);
  async function loadProfile(uid){
    try{
     const r=await supabase.from('profiles').select('*').eq('id',uid).maybeSingle();
@@ -81,7 +79,7 @@ export default function App(){
  if(screen==='onboarding')return <Onboarding onStart={()=>session?setScreen(state.name?'home':'setup'):setScreen('auth')}/>;
  if(screen==='setup')return <Setup state={state} patch={patch} onDone={async()=>{patch({progressTotal:0});await saveStudy();setScreen('home');notify('تم إنشاء خطتك الذكية') }}/>;
  const common={state,patch,session,profile,setScreen,notify,saveStudy};
- return <View style={s.app}>{screen==='home'&&<Home {...common}/>} {screen==='plan'&&<Plan {...common}/>} {screen==='session'&&<FocusSession {...common}/>} {screen==='quizzes'&&<Quizzes {...common}/>} {screen==='quiz'&&<Quiz {...common}/>} {screen==='analysis'&&<Analysis {...common}/>} {screen==='achievements'&&<Achievements {...common}/>} {screen==='notifications'&&<Notifications {...common}/>} {screen==='friends'&&<Friends {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>} {screen==='friendChallenge'&&<FriendChallenge {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>}<Nav screen={screen} setScreen={setScreen}/>{toast?<View style={s.toast}><Text style={{color:'#fff'}}>{toast}</Text></View>:null}</View>
+ return <AppErrorBoundary><View style={s.app}>{screen==='home'&&<Home {...common}/>} {screen==='plan'&&<Plan {...common}/>} {screen==='session'&&<FocusSession {...common}/>} {screen==='quizzes'&&<Quizzes {...common}/>} {screen==='quiz'&&<Quiz {...common}/>} {screen==='analysis'&&<Analysis {...common}/>} {screen==='achievements'&&<Achievements {...common}/>} {screen==='notifications'&&<Notifications {...common}/>} {screen==='friends'&&<Friends {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>} {screen==='friendChallenge'&&<FriendChallenge {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>}<Nav screen={screen} setScreen={setScreen}/>{toast?<View style={s.toast}><Text style={{color:'#fff'}}>{toast}</Text></View>:null}</View>
 }
 
 function Onboarding({onStart}){return <View style={s.onboard}><Text style={s.art}>🎓</Text><Text style={s.onboardTitle}>رحلة الثانوية</Text><Text style={s.onboardText}>مساعدك الذكي لتنظيم المذاكرة، متابعة التقدم، والتدرب على الاختبارات.</Text><Btn onPress={onStart}>ابدأ رحلتك</Btn><Text style={s.onboardHint}>خطة + جلسات تركيز + اختبارات + تحليل أخطاء + تحديات</Text></View>}
