@@ -107,7 +107,51 @@ function calcLocal(st){const commitment=Math.min(100,st.sessions/7*100),study=Ma
 
 function Plan({state,setScreen}){const subs=state.selected.length?state.selected:['العربية','الإنجليزية','الفيزياء'];return <ScrollView style={s.scroll}><Title title="خطتك الأسبوعية 📅" sub="توزيع وقتك على المواد"/><View style={s.pad}>{Array.from({length:7},(_,d)=><Card key={d}><Text style={s.h2}>{['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][d]}</Text>{subs.slice(0,Math.max(1,Math.min(4,subs.length))).map((x,i)=><View key={x} style={s.list}><Text>{x}</Text><Text style={s.muted}>{Math.round(Number(state.hours||3)*60/Math.max(1,subs.length))} دقيقة</Text></View>)}</Card>)}<Btn secondary onPress={()=>setScreen('session')}>ابدأ مذاكرة الآن</Btn></View></ScrollView>}
 
-function FocusSession({state,patch,setScreen,notify}){const [sec,setSec]=useState(25*60),[run,setRun]=useState(false),[breakMode,setBreakMode]=useState(false);const ref=useRef(null);useEffect(()=>{if(run){ref.current=setInterval(()=>setSec(x=>{if(x<=1){clearInterval(ref.current);setRun(false);if(!breakMode){patch({sessions:state.sessions+1,studied:state.studied+25/60,streak:Math.max(1,state.streak+1),progressTotal:Math.min(100,(state.progressTotal||0)+1)});notify('أحسنت! اكتملت جلسة 25 دقيقة');setBreakMode(true);return 5*60}return 25*60}),1000)}return()=>clearInterval(ref.current)},[run,breakMode]);const mm=String(Math.floor(sec/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');return <ScrollView style={s.scroll}><Title title="جلسة مذاكرة ⏱️" sub={breakMode?'وقت الراحة':'وقت التركيز'}/><View style={s.pad}><Card><View style={s.timer}><Text style={s.timerText}>{mm}:{ss}</Text><Text style={s.muted}>{breakMode?'راحة':'تركيز'}</Text></View><Btn onPress={()=>setRun(x=>!x)}>{run?'إيقاف مؤقت':'ابدأ'}</Btn><Btn secondary onPress={()=>{setRun(false);setSec(breakMode?300:1500)}}>إعادة ضبط</Btn><Btn secondary onPress={()=>setScreen('home')}>إنهاء الجلسة</Btn></Card></View></ScrollView>}
+function FocusSession({state,patch,setScreen,notify}){
+ const [sec,setSec]=useState(25*60);
+ const [run,setRun]=useState(false);
+ const [breakMode,setBreakMode]=useState(false);
+ const ref=useRef(null);
+ useEffect(()=>{
+   if(!run)return undefined;
+   ref.current=setInterval(()=>{
+     setSec(prev=>{
+       if(prev>1)return prev-1;
+       clearInterval(ref.current);
+       setRun(false);
+       if(!breakMode){
+         patch({
+           sessions:state.sessions+1,
+           studied:state.studied+25/60,
+           streak:Math.max(1,state.streak+1),
+           progressTotal:Math.min(100,(state.progressTotal||0)+1)
+         });
+         notify('أحسنت! اكتملت جلسة 25 دقيقة');
+         setBreakMode(true);
+         return 5*60;
+       }
+       return 25*60;
+     });
+   },1000);
+   return()=>clearInterval(ref.current);
+ },[run,breakMode]);
+ const mm=String(Math.floor(sec/60)).padStart(2,'0');
+ const ss=String(sec%60).padStart(2,'0');
+ return <ScrollView style={s.scroll}>
+   <Title title="جلسة مذاكرة ⏱️" sub={breakMode?'وقت الراحة':'وقت التركيز'}/>
+   <View style={s.pad}>
+     <Card>
+       <View style={s.timer}>
+         <Text style={s.timerText}>{mm}:{ss}</Text>
+         <Text style={s.muted}>{breakMode?'راحة':'تركيز'}</Text>
+       </View>
+       <Btn onPress={()=>setRun(x=>!x)}>{run?'إيقاف مؤقت':'ابدأ'}</Btn>
+       <Btn secondary onPress={()=>{setRun(false);setSec(breakMode?300:1500)}}>إعادة ضبط</Btn>
+       <Btn secondary onPress={()=>setScreen('home')}>إنهاء الجلسة</Btn>
+     </Card>
+   </View>
+ </ScrollView>;
+}
 
 function Quizzes({setScreen}){const [type,setType]=useState('mcq');return <ScrollView style={s.scroll}><Title title="الاختبارات 📝" sub="تدريب محلي وذكاء اصطناعي"/><View style={s.pad}><Card><Text style={s.h2}>اختبار سريع</Text><Text style={s.muted}>10 أسئلة من بنك مبدئي موزع على المواد.</Text><Btn onPress={()=>setScreen('quiz')}>ابدأ الاختبار</Btn></Card><Card><Text style={s.h2}>اختبار AI</Text><Text style={s.muted}>اختر المادة والنطاق والصعوبة وعدد الأسئلة.</Text><AIQuizLauncher type={type} setType={setType}/></Card></View></ScrollView>}
 
