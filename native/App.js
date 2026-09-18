@@ -57,13 +57,17 @@ export default function App(){
  useEffect(()=>{let alive=true;(async()=>{try{const {data}=await supabase.auth.getSession();if(!alive)return;setSession(data.session||null);if(data.session){await loadProfile(data.session.user.id)}}catch(e){console.log('bootstrap error',e)}finally{if(alive)setBoot(false)}})();const {data}=supabase.auth.onAuthStateChange((_e,sess)=>{setSession(sess);if(sess)setTimeout(()=>{if(alive)loadProfile(sess.user.id).catch(e=>console.log('profile load error',e))},0)});return()=>{alive=false;data.subscription.unsubscribe()}},[]);
  async function loadProfile(uid){
    try{
-    const p=await supabase.from('study_profiles').select('*').eq('user_id',uid).maybeSingle();
-    if(p.error){console.log('study profile read error',p.error);return}
+    const [p,pr]=await Promise.all([
+      supabase.from('study_profiles').select('*').eq('user_id',uid).maybeSingle(),
+      supabase.from('profiles').select('*').eq('id',uid).maybeSingle()
+    ]);
+    if(p.error)console.log('study profile read error',p.error);
+    if(pr.error)console.log('profile read error',pr.error);
+    if(pr.data)setProfile(pr.data);
     if(p.data){
-      setProfile(p.data);
-      setState(x=>({...x,name:p.data.display_name||p.data.name||x.name,track:p.data.track||x.track,examDate:p.data.exam_date||x.examDate,hours:Number(p.data.daily_hours||x.hours),progress:Number(p.data.progress||x.progress),diligenceScore:Number(p.data.diligence_score||x.diligenceScore)}));
+      setState(x=>({...x,name:p.data.display_name||p.data.name||pr.data?.name||x.name,track:p.data.track||pr.data?.track||x.track,examDate:p.data.exam_date||x.examDate,hours:Number(p.data.daily_hours||x.hours),progress:Number(p.data.progress||x.progress),diligenceScore:Number(p.data.diligence_score||x.diligenceScore)}));
       setScreen('home');
-    }
+    }else if(pr.data){setState(x=>({...x,name:pr.data.name||x.name,track:pr.data.track||x.track}));setScreen('home')}
    }catch(e){console.log('loadProfile error',e)}
  }
  async function saveStudy(extra={}){
