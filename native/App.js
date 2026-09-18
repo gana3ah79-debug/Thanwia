@@ -37,6 +37,8 @@ function Card({children}){return <View style={s.card}>{children}</View>}
 function Title({title,sub}){return <View style={s.top}><Text style={s.topTitle}>{title}</Text>{sub?<Text style={s.topSub}>{sub}</Text>:null}</View>}
 function Stat({value,label}){return <View style={s.stat}><Text style={s.statValue}>{value}</Text><Text style={s.muted}>{label}</Text></View>}
 function Field({value,onChangeText,placeholder,keyboardType}){return <TextInput value={String(value??'')} onChangeText={onChangeText} placeholder={placeholder} keyboardType={keyboardType} style={s.input} placeholderTextColor="#9aa6b7"/>}
+function Choice({label,value,options,onChange}){const i=Math.max(0,options.indexOf(value));return <Pressable onPress={()=>onChange(options[(i+1)%options.length])} style={s.choiceWide}><Text style={s.section}>{label}</Text><Text style={{fontSize:15,fontWeight:'900',color:C.ink}}>{value}  ⌄</Text></Pressable>}
+function SectionTitle({icon,children}){return <View style={s.sectionTitle}><Text style={s.sectionTitleText}>{children}</Text><Text style={s.sectionIcon}>{icon}</Text></View>}
 
 class AppErrorBoundary extends React.Component{constructor(p){super(p);this.state={error:null}}static getDerivedStateFromError(error){return {error}}componentDidCatch(error,info){console.log('Rihla runtime error',error,info)}render(){if(this.state.error)return <View style={s.centerPage}><Text style={s.h1}>حدث خطأ أثناء تشغيل التطبيق</Text><Text style={s.muted}>{String(this.state.error?.message||this.state.error)}</Text><Btn onPress={()=>this.setState({error:null})}>إعادة المحاولة</Btn></View>;return this.props.children}}
 
