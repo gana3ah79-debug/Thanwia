@@ -18,6 +18,11 @@ jobs:
           cache-dependency-path: native/package.json
       - name: Install dependencies
         run: npm install
+      - name: Prepare app icon
+        run: |
+          command -v convert
+          convert assets/icon.svg -resize 1024x1024 assets/icon.png
+          test -s assets/icon.png
       - name: Verify source is Native
         run: python3 verify_native.py
       - name: Expo prebuild
