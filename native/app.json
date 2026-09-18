@@ -1,12 +1,23 @@
 {
   "expo": {
-    "name":"رحلة الثانوية العامة",
-    "slug":"rihla-thanaweya",
-    "version":"2.1.2",
-    "orientation":"portrait",
-    "userInterfaceStyle":"automatic",
-    "newArchEnabled":false,
-    "android":{"package":"com.thanwia.app","versionCode":23,"adaptiveIcon":{"backgroundColor":"#071d3a"}},
-    "extra":{"supabaseUrl":"https://aenuzbaqskhyqwatrggg.supabase.co","supabasePublishableKey":"sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2"}
+    "name": "رحلة الثانوية العامة",
+    "slug": "rihla-thanaweya",
+    "version": "2.1.2",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "android": {
+      "package": "com.thanwia.app",
+      "versionCode": 23,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#071d3a"
+      }
+    },
+    "extra": {
+      "supabaseUrl": "https://aenuzbaqskhyqwatrggg.supabase.co",
+      "supabasePublishableKey": "sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2"
+    },
+    "icon": "./assets/icon.png"
   }
 }
