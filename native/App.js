@@ -60,6 +60,7 @@ export default function App(){
     const p=await supabase.from('study_profiles').select('*').eq('user_id',uid).maybeSingle();
     if(p.error){console.log('study profile read error',p.error);return}
     if(p.data){
+      setProfile(p.data);
       setState(x=>({...x,name:p.data.display_name||p.data.name||x.name,track:p.data.track||x.track,examDate:p.data.exam_date||x.examDate,hours:Number(p.data.daily_hours||x.hours),progress:Number(p.data.progress||x.progress),diligenceScore:Number(p.data.diligence_score||x.diligenceScore)}));
       setScreen('home');
     }
