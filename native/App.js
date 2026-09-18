@@ -47,12 +47,13 @@ export default function App(){
  useEffect(()=>{let alive=true;(async()=>{try{const {data}=await supabase.auth.getSession();if(!alive)return;setSession(data.session||null);if(data.session){await loadProfile(data.session.user.id)}}catch(e){console.log('bootstrap error',e)}finally{if(alive)setBoot(false)}})();const {data}=supabase.auth.onAuthStateChange((_e,sess)=>{setSession(sess);if(sess)setTimeout(()=>{if(alive)loadProfile(sess.user.id).catch(e=>console.log('profile load error',e))},0)});return()=>{alive=false;data.subscription.unsubscribe()}},[]);
  async function loadProfile(uid){
    try{
-    const r=await supabase.from('profiles').select('*').eq('id',uid).maybeSingle();
-    if(r.data)setProfile(r.data);
     const p=await supabase.from('study_profiles').select('*').eq('user_id',uid).maybeSingle();
-    if(p.data){setState(x=>({...x,name:p.data.display_name||p.data.name||x.name,track:p.data.track||x.track,examDate:p.data.exam_date||x.examDate,hours:Number(p.data.daily_hours||x.hours),progress:Number(p.data.progress||x.progress),diligenceScore:Number(p.data.diligence_score||x.diligenceScore)}))}
-    if(r.data||p.data)setScreen('home');
-   }catch(e){console.log(e)}
+    if(p.error){console.log('study profile read error',p.error);return}
+    if(p.data){
+      setState(x=>({...x,name:p.data.display_name||p.data.name||x.name,track:p.data.track||x.track,examDate:p.data.exam_date||x.examDate,hours:Number(p.data.daily_hours||x.hours),progress:Number(p.data.progress||x.progress),diligenceScore:Number(p.data.diligence_score||x.diligenceScore)}));
+      setScreen('home');
+    }
+   }catch(e){console.log('loadProfile error',e)}
  }
  async function saveStudy(extra={}){
    if(!session)return;
@@ -79,7 +80,7 @@ export default function App(){
  if(screen==='onboarding')return <Onboarding onStart={()=>session?setScreen(state.name?'home':'setup'):setScreen('auth')}/>;
  if(screen==='setup')return <Setup state={state} patch={patch} onDone={async()=>{patch({progressTotal:0});await saveStudy();setScreen('home');notify('تم إنشاء خطتك الذكية') }}/>;
  const common={state,patch,session,profile,setScreen,notify,saveStudy};
- return <AppErrorBoundary><View style={s.app}>{screen==='home'&&<Home {...common}/>} {screen==='plan'&&<Plan {...common}/>} {screen==='session'&&<FocusSession {...common}/>} {screen==='quizzes'&&<Quizzes {...common}/>} {screen==='quiz'&&<Quiz {...common}/>} {screen==='analysis'&&<Analysis {...common}/>} {screen==='achievements'&&<Achievements {...common}/>} {screen==='notifications'&&<Notifications {...common}/>} {screen==='friends'&&<Friends {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>} {screen==='friendChallenge'&&<FriendChallenge {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>}<Nav screen={screen} setScreen={setScreen}/>{toast?<View style={s.toast}><Text style={{color:'#fff'}}>{toast}</Text></View>:null}</View>
+ return <AppErrorBoundary><View style={s.app}>{screen==='home'&&<Home {...common}/>} {screen==='plan'&&<Plan {...common}/>} {screen==='session'&&<FocusSession {...common}/>} {screen==='quizzes'&&<Quizzes {...common}/>} {screen==='quiz'&&<Quiz {...common}/>} {screen==='analysis'&&<Analysis {...common}/>} {screen==='achievements'&&<Achievements {...common}/>} {screen==='notifications'&&<Notifications {...common}/>} {screen==='friends'&&<Friends {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>} {screen==='friendChallenge'&&<FriendChallenge {...common} challengeId={challengeId} setChallengeId={setChallengeId}/>}<Nav screen={screen} setScreen={setScreen}/>{toast?<View style={s.toast}><Text style={{color:'#fff'}}>{toast}</Text></View>:null}</View></AppErrorBoundary>
 }
 
 function Onboarding({onStart}){return <View style={s.onboard}><Text style={s.art}>🎓</Text><Text style={s.onboardTitle}>رحلة الثانوية</Text><Text style={s.onboardText}>مساعدك الذكي لتنظيم المذاكرة، متابعة التقدم، والتدرب على الاختبارات.</Text><Btn onPress={onStart}>ابدأ رحلتك</Btn><Text style={s.onboardHint}>خطة + جلسات تركيز + اختبارات + تحليل أخطاء + تحديات</Text></View>}
