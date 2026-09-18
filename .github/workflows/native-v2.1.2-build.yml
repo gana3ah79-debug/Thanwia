@@ -3,6 +3,9 @@ on:
   push:
     branches: [native-v2.1.2-full, native-v2.1.2-latest-full]
   workflow_dispatch:
+concurrency:
+  group: native-v2.1.2-latest
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
