@@ -76,7 +76,7 @@ export default function App(){
  },[screen]);
 
  if(boot)return <View style={s.centerPage}><Text style={s.big}>🎓</Text><Text style={s.h1}>رحلة الثانوية العامة</Text><Text style={s.muted}>جاري تجهيز رحلتك...</Text></View>;
- if(screen==='auth')return <Auth mode={authMode} setMode={setAuthMode} onDone={async(sess)=>{setSession(sess);await loadProfile(sess.user.id);}} notify={notify}/>;
+ if(screen==='auth')return <Auth mode={authMode} setMode={setAuthMode} onDone={(sess)=>{setSession(sess);setScreen('home');loadProfile(sess.user.id).catch(e=>console.log('post-login profile load error',e));}} notify={notify}/>;
  if(screen==='onboarding')return <Onboarding onStart={()=>session?setScreen(state.name?'home':'setup'):setScreen('auth')}/>;
  if(screen==='setup')return <Setup state={state} patch={patch} onDone={async()=>{patch({progressTotal:0});await saveStudy();setScreen('home');notify('تم إنشاء خطتك الذكية') }}/>;
  const common={state,patch,session,profile,setScreen,notify,saveStudy};
@@ -87,7 +87,7 @@ function Onboarding({onStart}){return <View style={s.onboard}><Text style={s.art
 
 function Auth({mode,setMode,onDone,notify}){
  const [email,setEmail]=useState(''),[pass,setPass]=useState(''),[busy,setBusy]=useState(false);
- async function go(){if(!email||!pass)return notify('اكتب البريد وكلمة المرور');setBusy(true);try{let r=mode==='login'?await supabase.auth.signInWithPassword({email,password:pass}):await supabase.auth.signUp({email,password:pass});if(r.error)throw r.error;if(r.data.session){await onDone(r.data.session)}else notify('تم إنشاء الحساب. راجع البريد إذا طُلب منك التأكيد.')}catch(e){notify(e.message||'حدث خطأ')}finally{setBusy(false)}}
+ async function go(){if(!email||!pass)return notify('اكتب البريد وكلمة المرور');setBusy(true);try{let r=mode==='login'?await supabase.auth.signInWithPassword({email,password:pass}):await supabase.auth.signUp({email,password:pass});if(r.error)throw r.error;if(r.data.session){onDone(r.data.session)}else notify('تم إنشاء الحساب. راجع البريد إذا طُلب منك التأكيد.')}catch(e){notify(e.message||'حدث خطأ')}finally{setBusy(false)}}
  return <View style={s.auth}><Card><Text style={s.h1}>تسجيل الدخول</Text><Text style={s.muted}>رحلة الثانوية العامة</Text><Field value={email} onChangeText={setEmail} placeholder="البريد الإلكتروني"/><Field value={pass} onChangeText={setPass} placeholder="كلمة المرور"/><Btn disabled={busy} onPress={go}>{busy?'جاري التنفيذ...':mode==='login'?'دخول':'إنشاء حساب'}</Btn><Pressable onPress={()=>setMode(mode==='login'?'signup':'login')}><Text style={s.link}>{mode==='login'?'إنشاء حساب جديد':'لدي حساب بالفعل'}</Text></Pressable></Card></View>
 }
 
