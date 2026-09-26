@@ -41,7 +41,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('app/coins.tsx')
           s = p.read_text()
           marker = "import ar from '../src/lib/i18n';"
@@ -57,11 +56,10 @@ jobs:
               if marker not in s:
                   raise SystemExit('coins.tsx import marker not found')
               s = s.replace(marker, block, 1)
-          pattern = r"require\(`\.\./assets/images/\$\{g\.image\}`\)"
-          s2 = re.sub(pattern, 'GIFT_IMAGES[g.image]', s, count=1)
-          if s2 == s:
+          old = "require(`../assets/images/${g.image}`)"
+          if old not in s:
               raise SystemExit('dynamic image require not found')
-          p.write_text(s2)
+          p.write_text(s.replace(old, "GIFT_IMAGES[g.image]", 1))
           print('Patched coins.tsx')
           PY
       - name: Install dependencies
