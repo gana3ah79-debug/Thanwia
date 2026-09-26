@@ -41,7 +41,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('app/coins.tsx')
+          p = Path('app/app/coins.tsx')
           s = p.read_text()
           marker = "import ar from '../src/lib/i18n';"
           block = """import ar from '../src/lib/i18n';
