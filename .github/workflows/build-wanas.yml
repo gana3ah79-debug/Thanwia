@@ -1,0 +1,72 @@
+name: Build Wanas APK
+
+on:
+  push:
+    branches:
+      - wanas-apk-build-20260927
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package.json
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+
+      - name: Extract Wanas source
+        run: |
+          mkdir -p app
+          tar -xzf build/wanas-source.tar.gz -C app
+          rm -f build/wanas-source.tar.gz
+
+      - name: Install npm dependencies
+        working-directory: app
+        env:
+          CI: '1'
+        run: npm install --no-audit --no-fund
+
+      - name: Generate Android project
+        working-directory: app
+        env:
+          CI: '1'
+          EXPO_NO_DOCTOR: '1'
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build Release APK
+        working-directory: app/android
+        env:
+          CI: '1'
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wanas-release-apk
+          path: app/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
