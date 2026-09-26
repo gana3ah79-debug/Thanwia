@@ -62,6 +62,16 @@ jobs:
           p.write_text(s.replace(old, "GIFT_IMAGES[g.image]", 1))
           print('Patched coins.tsx')
           PY
+      - name: Normalize PNG image assets
+        shell: bash
+        run: |
+          set -e
+          for f in app/assets/images/*.png; do
+            tmp="${f}.normalized.png"
+            convert "$f" -strip "$tmp"
+            mv "$tmp" "$f"
+          done
+          file app/assets/images/*.png | head -30
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
