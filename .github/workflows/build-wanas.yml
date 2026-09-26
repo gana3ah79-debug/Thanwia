@@ -33,22 +33,25 @@ jobs:
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           echo "Using sdkmanager: $SDKMANAGER"
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH" || true
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
 
-      - name: Extract Wanas source
+      - name: Rebuild source archive
+        shell: bash
         run: |
           rm -rf app
           mkdir -p app
-          tar -xzf build/wanas-source.tar.gz -C app
-          rm -f build/wanas-source.tar.gz
+          cat build/chunks/*.b64 | tr -d '
+' | base64 -d > /tmp/wanas-source.tar.gz
+          tar -tzf /tmp/wanas-source.tar.gz >/dev/null
+          tar -xzf /tmp/wanas-source.tar.gz -C app
+          rm -f /tmp/wanas-source.tar.gz
 
       - name: Install npm dependencies
         working-directory: app
         env:
           CI: '1'
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --legacy-peer-deps
 
       - name: Generate Android project
         working-directory: app
@@ -63,7 +66,7 @@ jobs:
           CI: '1'
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: wanas-release-apk
