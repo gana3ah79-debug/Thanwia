@@ -1,74 +1,19 @@
-name: Build Wanas APK
-
+name: Wanas APK Build Test
 on:
   push:
     branches:
       - wanas-apk-build-20260927
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Prepare Android SDK
+      - uses: actions/checkout@v4
+      - name: Check source archive
         shell: bash
         run: |
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
-          echo "Using sdkmanager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
-
-      - name: Rebuild source archive
-        shell: bash
-        run: |
-          rm -rf app
-          mkdir -p app
+          echo "runner ok"
+          ls -lh build/chunks | head
           cat build/chunks/*.b64 | tr -d '
 ' | base64 -d > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
-          tar -xzf /tmp/wanas-source.tar.gz -C app
-          rm -f /tmp/wanas-source.tar.gz
-
-      - name: Install npm dependencies
-        working-directory: app
-        env:
-          CI: '1'
-        run: npm install --no-audit --no-fund --legacy-peer-deps
-
-      - name: Generate Android project
-        working-directory: app
-        env:
-          CI: '1'
-          EXPO_NO_DOCTOR: '1'
-        run: npx expo prebuild --platform android --clean --no-install
-
-      - name: Build Release APK
-        working-directory: app/android
-        env:
-          CI: '1'
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wanas-release-apk
-          path: app/android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          echo "archive ok: $(stat -c%s /tmp/wanas-source.tar.gz) bytes"
