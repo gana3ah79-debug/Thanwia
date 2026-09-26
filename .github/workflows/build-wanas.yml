@@ -22,14 +22,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: app/package.json
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -41,6 +38,7 @@ jobs:
 
       - name: Extract Wanas source
         run: |
+          rm -rf app
           mkdir -p app
           tar -xzf build/wanas-source.tar.gz -C app
           rm -f build/wanas-source.tar.gz
