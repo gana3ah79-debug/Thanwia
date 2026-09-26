@@ -33,7 +33,7 @@ jobs:
         run: |
           rm -rf app
           mkdir -p app
-          cat build/binparts/*.part > /tmp/wanas-source.tar.gz
+          cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
       - name: Fix dynamic gift image imports
@@ -62,6 +62,12 @@ jobs:
           p.write_text(s.replace(old, "GIFT_IMAGES[g.image]", 1))
           print('Patched coins.tsx')
           PY
+      - name: Verify normalized images
+        shell: bash
+        run: |
+          set -e
+          file app/assets/images/*.png | tee /tmp/image-types.txt
+          ! grep -E 'JPEG|JFIF' /tmp/image-types.txt
       - name: Normalize PNG image assets
         shell: bash
         run: |
