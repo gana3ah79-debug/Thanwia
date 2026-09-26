@@ -33,7 +33,7 @@ jobs:
         run: |
           rm -rf app
           mkdir -p app
-          cat build/chunks/*.b64 | tr -d '\n' | base64 -d > /tmp/wanas-source.tar.gz
+          cat build/binparts/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
       - name: Install dependencies
