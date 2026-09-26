@@ -66,21 +66,12 @@ jobs:
         shell: bash
         run: |
           set -e
-          python3 - <<'PY'
-          import sys, subprocess
-          try:
-              from PIL import Image
-          except ImportError:
-              subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "--quiet"])
-              from PIL import Image
-          from pathlib import Path
-          for f in Path("app/assets/images").glob("*.png"):
-              tmp = f.with_suffix(".normalized.png")
-              with Image.open(f) as img:
-                  img.convert("RGBA").save(tmp, format="PNG", optimize=True)
-              tmp.replace(f)
-          print("Normalized", len(list(Path("app/assets/images").glob("*.png"))), "images")
-          PY
+          command -v ffmpeg
+          for f in app/assets/images/*.png; do
+            tmp="${f}.normalized.png"
+            ffmpeg -loglevel error -y -i "$f" -frames:v 1 -c:v png "$tmp"
+            mv "$tmp" "$f"
+          done
           file app/assets/images/*.png | head -30
       - name: Install dependencies
         working-directory: app
