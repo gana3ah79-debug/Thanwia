@@ -36,6 +36,34 @@ jobs:
           cat build/binparts/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
+      - name: Fix dynamic gift image imports
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('app/coins.tsx')
+          s = p.read_text()
+          marker = "import ar from '../src/lib/i18n';"
+          block = """import ar from '../src/lib/i18n';
+
+          const GIFT_IMAGES: Record<string, any> = {
+            'gift_heart.png': require('../assets/images/gift_heart.png'),
+            'gift_rose.png': require('../assets/images/gift_rose.png'),
+            'gift_star.png': require('../assets/images/gift_star.png'),
+            'gift_crown.png': require('../assets/images/gift_crown.png'),
+          };"""
+          if "const GIFT_IMAGES" not in s:
+              if marker not in s:
+                  raise SystemExit('coins.tsx import marker not found')
+              s = s.replace(marker, block, 1)
+          pattern = r"require\(`\.\./assets/images/\$\{g\.image\}`\)"
+          s2 = re.sub(pattern, 'GIFT_IMAGES[g.image]', s, count=1)
+          if s2 == s:
+              raise SystemExit('dynamic image require not found')
+          p.write_text(s2)
+          print('Patched coins.tsx')
+          PY
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
