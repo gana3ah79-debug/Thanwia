@@ -28,11 +28,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Prepare Android SDK
         run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --list | head -40
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
 
