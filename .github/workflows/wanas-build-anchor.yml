@@ -2,7 +2,7 @@ name: Wanas APK Builder
 on:
   push:
     branches:
-      - wanas-apk-build-20260927
+      - main
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,10 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout feature branch
+      - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ref: wanas-apk-build-20260927
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -46,9 +44,9 @@ jobs:
         env:
           EXPO_NO_DOCTOR: '1'
         run: npx expo prebuild --platform android --clean --no-install
-      - name: Build APK
+      - name: Build Release APK
         working-directory: app/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
