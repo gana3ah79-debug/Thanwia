@@ -68,17 +68,6 @@ jobs:
           set -e
           file app/assets/images/*.png | tee /tmp/image-types.txt
           ! grep -E 'JPEG|JFIF' /tmp/image-types.txt
-      - name: Normalize PNG image assets
-        shell: bash
-        run: |
-          set -e
-          command -v ffmpeg
-          for f in app/assets/images/*.png; do
-            tmp="${f}.normalized.png"
-            ffmpeg -loglevel error -y -i "$f" -frames:v 1 -c:v png "$tmp"
-            mv "$tmp" "$f"
-          done
-          file app/assets/images/*.png | head -30
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
