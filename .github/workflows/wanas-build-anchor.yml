@@ -73,7 +73,7 @@ jobs:
         run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Add React Native auth persistence
         working-directory: app
-        run: npm install @react-native-async-storage/async-storage --save-exact --no-audit --no-fund
+        run: npm install @react-native-async-storage/async-storage react-native-url-polyfill --save-exact --no-audit --no-fund
 
       - name: Fix Expo Router query-string dependency
         working-directory: app
