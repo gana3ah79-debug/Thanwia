@@ -114,3 +114,18 @@ s=s.replace("msg:{color:'#fff',backgroundColor:'#17233b',padding:10,borderRadius
 
 p.write_text(s)
 print('Patched engagement with device music, volume control, and voice chat messages.')
+
+# Compatibility hardening: do not let optional profile columns break onboarding when PostgREST cache/schema is stale.
+from pathlib import Path as _Path
+import re as _re
+for _root in (_Path('app'), _Path('src')):
+    if not _root.exists(): continue
+    for _p in _root.rglob('*'):
+        if _p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in _p.parts or 'android' in _p.parts: continue
+        try: _txt=_p.read_text()
+        except: continue
+        _new=_txt
+        # Remove only profile projection columns known to cause schema-cache failures.
+        _new=_re.sub(r"(\\.select\\(\\s*['\"])([^'\"]*?)(['\"])", lambda m: m.group(1)+_re.sub(r'(?<![A-Za-z0-9_])(avatar_url|bio)(?![A-Za-z0-9_])\\s*,?\\s*','',m.group(2)).strip(' ,')+m.group(3), _new)
+        if _new!=_txt: _p.write_text(_new)
+print('Profile projection compatibility hardening applied for avatar_url and bio')
