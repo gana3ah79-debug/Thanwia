@@ -126,6 +126,6 @@ for _root in (_Path('app'), _Path('src')):
         except: continue
         _new=_txt
         # Remove only profile projection columns known to cause schema-cache failures.
-        _new=_re.sub(r"(\\.select\\(\\s*['\"])([^'\"]*?)(['\"])", lambda m: m.group(1)+_re.sub(r'(?<![A-Za-z0-9_])(avatar_url|bio)(?![A-Za-z0-9_])\\s*,?\\s*','',m.group(2)).strip(' ,')+m.group(3), _new)
+         _new=_re.sub(r"(\.select\(\s*['\"])([^'\"]*?)(['\"])", lambda m: m.group(1)+_re.sub(r'(?<![A-Za-z0-9_])(avatar_url|bio)(?![A-Za-z0-9_])\s*,?\s*','',m.group(2)).strip(' ,')+m.group(3), _new)
         if _new!=_txt: _p.write_text(_new)
 print('Profile projection compatibility hardening applied for avatar_url and bio')
