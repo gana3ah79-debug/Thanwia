@@ -53,7 +53,7 @@ if anchor not in s: raise SystemExit('savePermission anchor missing')
 s=s.replace(anchor,insert+anchor,1)
 
 # Replace roles section with owner + existing granular admin roles
-start="if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>"
+start='if(tab===\'roles\')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>'
 idx=s.find(start)
 if idx<0: raise SystemExit('roles start missing')
 end=s.find("\n\n              if(tab==='notifications')",idx)
@@ -66,7 +66,7 @@ roles="""if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات �
 s=s[:idx]+roles+s[end:]
 
 # Replace settings fallback with chat/music controls plus existing service settings.
-settings_anchor="return <><Back/><SectionHeader title="إعدادات التطبيق" icon="settings-outline"/>"
+settings_anchor='return <><Back/><SectionHeader title="إعدادات التطبيق" icon="settings-outline"/>'
 idx=s.find(settings_anchor)
 if idx<0: raise SystemExit('settings anchor missing')
 # insert card before existing service card
