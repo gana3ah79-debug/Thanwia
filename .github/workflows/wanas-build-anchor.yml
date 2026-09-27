@@ -36,6 +36,48 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
+      - name: Remove stale avatar_url profile field usage
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots=[Path('app'),Path('src')]
+          changed=0
+          hits=[]
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
+                      continue
+                  try: s=p.read_text()
+                  except: continue
+                  n=s
+
+                  # Remove avatar_url only from PostgREST select string lists.
+                  pat=re.compile(r"(\\.select\\(\\s*['\"])([^'\"]*?)(['\"])",re.S)
+                  def clean(m):
+                      fields=[x.strip() for x in m.group(2).split(',')]
+                      fields=[x for x in fields if x != 'avatar_url']
+                      return m.group(1)+','.join(fields)+m.group(3)
+                  n=pat.sub(clean,n)
+
+                  # Remove avatar_url from common profile projection strings outside select().
+                  n=re.sub(r"(?i)(['\"])(id(?:\\s*,\\s*)?(?:name|email|track|role|xp|phone)(?:\\s*,\\s*)*)?avatar_url\\s*,?([^'\"]*)(['\"])",lambda m:m.group(0),n)
+
+                  if n!=s:
+                      p.write_text(n); changed+=1
+                      if 'avatar_url' in s: hits.append(str(p))
+
+          print('Removed stale avatar_url select fields from',changed,'files')
+          for x in hits[:50]: print('patched:',x)
+          PY
+          echo "Remaining avatar_url references:"
+          grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 100 || true
+
       - name: Configure Wanas Supabase environment
         shell: bash
         run: |
