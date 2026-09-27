@@ -1003,6 +1003,7 @@ jobs:
           python3 ../build/patches/music_voice.py
           python3 ../build/patches/admin_growth.py
           python3 ../build/patches/owner_admin.py
+          python3 ../build/patches/control_center.py
           TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
           if [ -n "$TAB_DIR" ]; then
             LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
