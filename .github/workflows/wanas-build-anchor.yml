@@ -207,6 +207,7 @@ jobs:
           print('Native intent, not-found, and /index compatibility routes hardened')
           PY
 
+          mkdir -p app/app/index
           test -f app/+native-intent.tsx
           test -f app/+not-found.tsx
           test -f app/app/index/index.tsx
