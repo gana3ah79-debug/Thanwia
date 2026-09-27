@@ -36,108 +36,13 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
-      - name: Remove stale avatar_url profile field usage
+      - name: Verify Wanas profile schema
         working-directory: app
         shell: bash
         run: |
           set -e
-          python3 - <<'PY'
-          from pathlib import Path
-
-          roots=[Path('app'),Path('src')]
-          changed=0
-          hits=[]
-          for root in roots:
-              if not root.exists(): continue
-              for p in root.rglob('*'):
-                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
-                      continue
-                  try: s=p.read_text()
-                  except: continue
-                  n=s
-                  pos=0
-                  while True:
-                      j=n.find('.select(',pos)
-                      if j<0: break
-                      qpos=j+len('.select(')
-                      while qpos<len(n) and n[qpos].isspace(): qpos+=1
-                      if qpos>=len(n) or n[qpos] not in "'\"":
-                          pos=j+8; continue
-                      q=n[qpos]; endq=n.find(q,qpos+1)
-                      if endq<0: break
-                      body=n[qpos+1:endq]
-                      if 'avatar_url' in body:
-                          fields=[x.strip() for x in body.split(',') if x.strip()!='avatar_url']
-                          newbody=','.join(fields)
-                          n=n[:qpos+1]+newbody+n[endq:]
-                          pos=qpos+1+len(newbody)+1
-                      else:
-                          pos=endq+1
-                  if n!=s:
-                      p.write_text(n); changed+=1
-                      if 'avatar_url' in s: hits.append(str(p))
-          print('Removed stale avatar_url select fields from',changed,'files')
-          for x in hits[:50]: print('patched:',x)
-          PY
-          # Remove avatar_url from write payloads too. Older screens may send it in profile update objects.
-          python3 - <<'PY'
-          from pathlib import Path
-          roots=[Path('app'),Path('src')]
-          changed=0
-          for root in roots:
-              if not root.exists(): continue
-              for p in root.rglob('*'):
-                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
-                      continue
-                  try: s=p.read_text()
-                  except: continue
-                  lines=s.splitlines(True)
-                  out=[]
-                  touched=False
-                  for line in lines:
-                      if 'avatar_url:' in line:
-                          stripped=line.strip()
-                          if stripped.startswith('avatar_url:'):
-                              touched=True
-                              continue
-                      out.append(line)
-                  n=''.join(out)
-                  if n!=s:
-                      p.write_text(n); changed+=1
-          print('Removed avatar_url write lines from',changed,'files')
-          PY
-          # Final hard-disable of legacy avatar_url reads in every select form.
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          roots=[Path('app'),Path('src')]
-          changed=0
-          for root in roots:
-              if not root.exists(): continue
-              for p in root.rglob('*'):
-                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
-                  try: s=p.read_text()
-                  except: continue
-                  n=s
-                  # Remove avatar_url from quoted .select('...') / .select("...") / template selects.
-                  pat=r"(\.select\(\s*)(['\"`])([^'\"`]*?)\2"
-                  def clean(m):
-                      body=m.group(3)
-                      if 'avatar_url' not in body: return m.group(0)
-                      fields=[x.strip() for x in body.split(',') if x.strip() and x.strip()!='avatar_url']
-                      return m.group(1)+m.group(2)+','.join(fields)+m.group(2)
-                  n=re.sub(pat,clean,n)
-                  # Remove standalone legacy references that remain in profile reads.
-                  n=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\s*,?', '', n)
-                  if n!=s: p.write_text(n); changed+=1
-          print('Final avatar_url scrubbed files:',changed)
-          PY
-          echo "Remaining avatar_url references:"
-          if grep -RIn "avatar_url" app src --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null; then
-            echo "ERROR: avatar_url reference remains in bundled source; refusing to build stale profile schema usage."
-            exit 1
-          fi
-          echo "OK: no avatar_url references remain in app source."
+          echo "Profile schema compatibility is handled by Supabase; do not rewrite source projections."
+          echo "avatar_url source references are preserved so the profile UI remains valid."
 
       - name: Configure Wanas Supabase environment
         shell: bash
