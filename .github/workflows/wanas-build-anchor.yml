@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          mkdir -p app/app src/lib
+          mkdir -p app/app src/lib app/app/index
           cat > src/lib/wanasSupabase.ts <<'EOF'
           import { AppState } from 'react-native';
           import AsyncStorage from '@react-native-async-storage/async-storage';
