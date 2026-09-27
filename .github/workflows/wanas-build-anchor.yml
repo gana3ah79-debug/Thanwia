@@ -79,8 +79,18 @@ jobs:
         shell: bash
         run: |
           set -e
-          grep -RIl --exclude-dir=.git '1.9.24' node_modules | xargs -r sed -i 's/1.9.24/1.9.25/g'
-          grep -R '1.9.24' node_modules/expo-modules-core node_modules/expo 2>/dev/null || true
+          for root in node_modules/expo-modules-core node_modules/expo node_modules/@expo; do
+            if [ -d "$root" ]; then
+              find "$root" -type f \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' -o -name 'libs.versions.toml' \) -print0 |
+                xargs -0 -r sed -i 's/1\.9\.24/1.9.25/g'
+            fi
+          done
+          echo "Remaining Kotlin 1.9.24 references in Expo Gradle files:"
+          for root in node_modules/expo-modules-core node_modules/expo node_modules/@expo; do
+            if [ -d "$root" ]; then
+              grep -R '1\.9\.24' "$root" --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='libs.versions.toml' 2>/dev/null || true
+            fi
+          done
       - name: Prebuild Android
         working-directory: app
         env:
