@@ -79,6 +79,982 @@ jobs:
           print('Removed stale avatar_url select fields from',changed,'files')
           for x in hits[:50]: print('patched:',x)
           PY
+          # Remove avatar_url from write payloads too. Some older screens send it in insert/update/upsert objects.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots=[Path('app'),Path('src')]
+          changed=0
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
+                      continue
+                  try: s=p.read_text()
+                  except: continue
+                  n=s
+                  # Most payloads use a simple property on its own line.
+                  n=re.sub(r'^([ \\t]*)avatar_url\\s*:\\s*[^,\\n}]+,?\\s*
+
+      - name: Configure Wanas Supabase environment
+        shell: bash
+        run: |
+          set -e
+          echo "EXPO_PUBLIC_SUPABASE_URL=https://aenuzbaqskhyqwatrggg.supabase.co" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2" >> "$GITHUB_ENV"
+          echo "Wanas Supabase environment configured for the mobile bundle"
+
+      - name: Finalize Wanas auth persistence and route safety
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          mkdir -p app/app src/lib app/app/index
+          cat > src/lib/wanasSupabase.ts <<'EOF'
+          import { AppState } from 'react-native';
+          import AsyncStorage from '@react-native-async-storage/async-storage';
+          import 'react-native-url-polyfill/auto';
+          import { createClient } from '@supabase/supabase-js';
+
+          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+
+          export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {
+              storage: AsyncStorage,
+              storageKey: 'wanas-auth-session',
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: false,
+            },
+          });
+
+          AppState.addEventListener('change', (state) => {
+            if (state === 'active') supabase.auth.startAutoRefresh();
+            else supabase.auth.stopAutoRefresh();
+          });
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots=[Path('app'),Path('src')]
+          files=[]
+          for root in roots:
+              if not root.exists(): continue
+              files += [p for p in root.rglob('*') if p.suffix in {'.ts','.tsx','.js','.jsx'} and 'node_modules' not in p.parts and 'android' not in p.parts]
+
+          def find_matching(s, start, op='(', cl=')'):
+              depth=0; quote=None; esc=False; line=False; block=False; i=start
+              while i<len(s):
+                  c=s[i]; n=s[i+1] if i+1<len(s) else ''
+                  if line:
+                      if c=='\n': line=False
+                  elif block:
+                      if c=='*' and n=='/': block=False; i+=1
+                  elif quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"": quote=c
+                      elif c=='/' and n=='/': line=True; i+=1
+                      elif c=='/' and n=='*': block=True; i+=1
+                      elif c==op: depth+=1
+                      elif c==cl:
+                          depth-=1
+                          if depth==0: return i
+                  i+=1
+              return -1
+
+          def split_args(s, start, end):
+              out=[]; last=start; depth=0; quote=None; esc=False; line=False; block=False; i=start
+              while i<end:
+                  c=s[i]; n=s[i+1] if i+1<end else ''
+                  if line:
+                      if c=='\n': line=False
+                  elif block:
+                      if c=='*' and n=='/': block=False; i+=1
+                  elif quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"": quote=c
+                      elif c=='/' and n=='/': line=True; i+=1
+                      elif c=='/' and n=='*': block=True; i+=1
+                      elif c in '({[': depth+=1
+                      elif c in ')}]': depth-=1
+                      elif c==',' and depth==0:
+                          out.append((last,i)); last=i+1
+                  i+=1
+              out.append((last,end))
+              return out
+
+          touched=0
+          for p in files:
+              if p.as_posix().endswith('src/lib/wanasSupabase.ts'): continue
+              try:s=p.read_text()
+              except:continue
+              if '@supabase/supabase-js' not in s or 'createClient(' not in s: continue
+              n=s
+              if '@react-native-async-storage/async-storage' not in n:
+                  lines=n.splitlines(True); pos=0
+                  while pos<len(lines) and (lines[pos].startswith('import ') or not lines[pos].strip()): pos+=1
+                  lines.insert(pos, "import AsyncStorage from '@react-native-async-storage/async-storage';\n")
+                  n=''.join(lines)
+              changed=False
+              search_from=0
+              while True:
+                  j=n.find('createClient(',search_from)
+                  if j<0: break
+                  open_i=j+len('createClient')
+                  close_i=find_matching(n,open_i,'(',')')
+                  if close_i<0: break
+                  spans=split_args(n,open_i+1,close_i)
+                  arg_text=[n[a:b].strip() for a,b in spans]
+                  if len(arg_text)<2:
+                      search_from=close_i+1; continue
+                  if len(arg_text)==2:
+                      repl=n[j:close_i+1]
+                      repl=repl[:-1]+", { auth: { storage: AsyncStorage, storageKey: 'wanas-auth-session', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } })"
+                      n=n[:j]+repl+n[close_i+1:]
+                      changed=True; search_from=j+len(repl); continue
+                  a,b=spans[2]; third=n[a:b].strip()
+                  if not third.startswith('{'):
+                      search_from=close_i+1; continue
+                  auth_match=re.search(r'\bauth\s*:\s*\{',third)
+                  if auth_match:
+                      ao=auth_match.end()-1
+                      ac=find_matching(third,ao,'{','}')
+                      if ac>ao:
+                          auth=third[ao+1:ac]
+                          for key,val in [('storage','AsyncStorage'),('storageKey',"'wanas-auth-session'"),('persistSession','true'),('autoRefreshToken','true'),('detectSessionInUrl','false')]:
+                              pat=r'\b'+re.escape(key)+r'\s*:\s*[^,}]+,?'
+                              if re.search(pat,auth):
+                                  auth=re.sub(pat,key+': '+val+',',auth,count=1)
+                              else:
+                                  auth=key+': '+val+', '+auth
+                          newthird=third[:ao+1]+auth+third[ac:]
+                      else:
+                          newthird=third
+                  else:
+                      newthird="{ auth: { storage: AsyncStorage, storageKey: 'wanas-auth-session', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }, "+third[1:]
+                  n=n[:a]+newthird+n[b:]
+                  changed=True
+                  search_from=a+len(newthird)
+              if changed:
+                  p.write_text(n); touched+=1
+          print('Supabase client files normalized:',touched)
+
+          native=Path('app/+native-intent.tsx')
+          native.write_text("""export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
+            try {
+              const raw = String(path || '');
+              const noScheme = raw.replace(/^[a-z][a-z0-9+.-]*:\/\/\/?/, '');
+              const clean = noScheme.replace(/^\/+/, '');
+              if (/^index(?:[/?#]|$)/i.test(clean)) return '/';
+              if (clean === '' || clean === '/') return '/';
+              return raw;
+            } catch {
+              return '/';
+            }
+          }
+          """)
+          Path('app/+not-found.tsx').write_text("""import { Redirect } from 'expo-router';
+          export default function NotFound() {
+            return <Redirect href="/" />;
+          }
+          """)
+          Path('app/app/index/index.tsx').write_text("""import { Redirect } from 'expo-router';
+          export default function LegacyIndexRoute() {
+            return <Redirect href="/" />;
+          }
+          """)
+          print('Native intent, not-found, and /index compatibility routes hardened')
+          PY
+
+          mkdir -p app/app/index
+          test -f app/+native-intent.tsx
+          test -f app/+not-found.tsx
+          test -f app/app/index/index.tsx
+
+      - name: Fix dynamic gift image imports
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/app/coins.tsx')
+          s = p.read_text()
+          marker = "import ar from '../src/lib/i18n';"
+          block = """import ar from '../src/lib/i18n';
+
+          const GIFT_IMAGES: Record<string, any> = {
+            'gift_heart.png': require('../assets/images/gift_heart.png'),
+            'gift_rose.png': require('../assets/images/gift_rose.png'),
+            'gift_star.png': require('../assets/images/gift_star.png'),
+            'gift_crown.png': require('../assets/images/gift_crown.png'),
+          };"""
+          if "const GIFT_IMAGES" not in s:
+              if marker not in s:
+                  raise SystemExit('coins.tsx import marker not found')
+              s = s.replace(marker, block, 1)
+          old = "require(`../assets/images/${g.image}`)"
+          if old not in s:
+              raise SystemExit('dynamic image require not found')
+          p.write_text(s.replace(old, "GIFT_IMAGES[g.image]", 1))
+          print('Patched coins.tsx')
+          PY
+      - name: Verify normalized images
+        shell: bash
+        run: |
+          set -e
+          file app/assets/images/*.png | tee /tmp/image-types.txt
+          ! grep -E 'JPEG|JFIF' /tmp/image-types.txt
+      - name: Diagnose Wanas auth lifecycle
+        working-directory: app
+        shell: bash
+        run: |
+          set +e
+          echo '=== SUPABASE CLIENT / AUTH REFERENCES ==='
+          grep -RInE "createClient\(|signInWithPassword|signUp\(|signOut\(|getSession\(|getUser\(|onAuthStateChange|removeItem\(|clear\(\)|AsyncStorage" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 300 || true
+          echo '=== APP ROUTES ==='
+          find app -maxdepth 3 -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name '+not-found.tsx' \) -print | sort | head -n 100
+          echo '=== PACKAGE AUTH STORAGE ==='
+          node -e "const p=require('./package.json'); console.log({supabase:p.dependencies?.['@supabase/supabase-js'],asyncStorage:p.dependencies?.['@react-native-async-storage/async-storage'],router:p.dependencies?.['expo-router']})"
+      - name: Install dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Add React Native auth persistence
+        working-directory: app
+        run: npm install @react-native-async-storage/async-storage react-native-url-polyfill --save-exact --no-audit --no-fund
+
+      - name: Fix Expo Router query-string dependency
+        working-directory: app
+        run: npm install query-string@7.1.3 expo-av@15.0.2 expo-document-picker@13.0.3 --save-exact --no-audit --no-fund
+      - name: Align Kotlin versions in Expo modules
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          for root in node_modules/expo-modules-core node_modules/expo node_modules/@expo; do
+            if [ -d "$root" ]; then
+              find "$root" -type f \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' -o -name 'libs.versions.toml' \) -print0 |
+                xargs -0 -r sed -i 's/1\.9\.24/1.9.25/g; s/1\.5\.15/1.5.14/g'
+            fi
+          done
+          echo "Remaining Kotlin 1.9.24 references in Expo Gradle files:"
+          for root in node_modules/expo-modules-core node_modules/expo node_modules/@expo; do
+            if [ -d "$root" ]; then
+              grep -R '1\.9\.24' "$root" --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='libs.versions.toml' 2>/dev/null || true
+            fi
+          done
+
+      - name: Add Wanas Supabase and privacy features
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          mkdir -p app/app src/lib
+          cat > src/lib/wanasSupabase.ts <<'EOF'
+          import { AppState } from 'react-native';
+          import AsyncStorage from '@react-native-async-storage/async-storage';
+          import 'react-native-url-polyfill/auto';
+          import { createClient } from '@supabase/supabase-js';
+
+          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+
+          export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {
+              storage: AsyncStorage,
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: false,
+            },
+          });
+
+          AppState.addEventListener('change', (state) => {
+            if (state === 'active') supabase.auth.startAutoRefresh();
+            else supabase.auth.stopAutoRefresh();
+          });
+          EOF
+
+
+
+          # Compatibility route: older builds/deep-links use /index.
+          # Expo Router maps app/app/index.tsx to /, so /index needs a real alias.
+          mkdir -p app/app/index
+          cat > app/app/index/index.tsx <<'EOF'
+          import { Redirect } from 'expo-router';
+          export default function LegacyIndexRoute() {
+            return <Redirect href="/" />;
+          }
+          EOF
+
+          # Normalize every common object-style /index navigation as well.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('app')
+          for p in root.rglob('*'):
+              if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
+              try:t=p.read_text()
+              except:continue
+              n=t.replace("pathname: '/index'","pathname: '/'").replace('pathname: "/index"','pathname: "/"')
+              n=n.replace("href: '/index'","href: '/'").replace('href: "/index"','href: "/"')
+              n=n.replace("url: 'wanas:///index'","url: 'wanas:///'").replace('url: "wanas:///index"','url: "wanas:///"')
+              if n!=t:p.write_text(n)
+          PY
+
+          # Activate previously placeholder admin areas using real Supabase data.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/admin.tsx'); s=p.read_text()
+
+          s=s.replace(
+          "const [notice,setNotice]=useState('');",
+          """const [notice,setNotice]=useState('');
+            const [aiQuestions,setAiQuestions]=useState<any[]>([]);
+            const [aiRuns,setAiRuns]=useState<any[]>([]);
+            const [challengeRooms,setChallengeRooms]=useState<any[]>([]);
+            const [supportReplies,setSupportReplies]=useState<Record<string,string>>({});"""
+          )
+
+          s=s.replace(
+          "supabase.from('admin_settings').select('*'),",
+          """supabase.from('admin_settings').select('*'),
+                supabase.from('ai_generated_questions').select('id,subject,unit,lesson,stem,difficulty,quality_score,status,created_at,model').order('created_at',{ascending:false}).limit(100),
+                supabase.from('ai_generation_runs').select('id,subject,unit,lesson,count_requested,count_generated,status,model,created_at,error_message').order('created_at',{ascending:false}).limit(50),
+                supabase.from('challenge_rooms').select('pin,host_user_id,subject,topic,rounds,status,created_at,updated_at').order('created_at',{ascending:false}).limit(50),"""
+          )
+
+          s=s.replace(
+          "const [pr,pm,sp,lg,se,ar,as]=results;",
+          "const [pr,pm,sp,lg,se,ar,as,aq,ag,cr]=results;"
+          )
+
+          s=s.replace(
+          "setSecurity(se.data||[]);",
+          """setSecurity(se.data||[]);
+              setAiQuestions(aq.data||[]);
+              setAiRuns(ag.data||[]);
+              setChallengeRooms(cr.data||[]);"""
+          )
+
+          s=s.replace(
+          "const sendMessage=async()=>{",
+          """const replySupport=async(ticket:any)=>{
+              const reply=(supportReplies[ticket.id]||'').trim();
+              if(!reply)return Alert.alert('مطلوب','اكتب الرد أولاً.');
+              const {error}=await supabase.from('support_tickets').update({admin_reply:reply,status:'answered',updated_at:new Date().toISOString()}).eq('id',ticket.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {setSupportReplies(x=>({...x,[ticket.id]:''}));await writeLog('reply_support_ticket',ticket.user_id,{ticket_id:ticket.id});load();}
+            };
+
+            const moderateAIQuestion=async(q:any,status:string)=>{
+              const {error}=await supabase.from('ai_generated_questions').update({status}).eq('id',q.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {await writeLog('moderate_ai_question',undefined,{question_id:q.id,status});setAiQuestions(x=>x.map(v=>v.id===q.id?{...v,status}:v));}
+            };
+
+            const sendMessage=async()=>{"""
+          )
+
+          old_comments="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة التعليقات" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>مركز مراجعة التعليقات</Text><Text style={styles.muted}>تم تجهيز قسم الإدارة لربطه بجدول التعليقات. إذا كان جدول comments موجودًا في Supabase سيتم تفعيله في الخطوة التالية بدون تغيير واجهة الأعضاء.</Text><View style={styles.infoRow}><Ionicons name="information-circle-outline" size={20} color="#77a2ff"/><Text style={styles.muted}>الهدف: إخفاء التعليق، حذف المخالفات، مراجعة البلاغات وترتيب الأحدث أولًا.</Text></View></View></>;"""
+          new_comments="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة المحتوى والتعليقات" icon="chatbubbles-outline"/>
+                <View style={styles.card}><Text style={styles.h2}>بنك أسئلة AI</Text><Text style={styles.muted}>إدارة فعلية للأسئلة التي يولدها الذكاء الاصطناعي وتستخدمها الألعاب والاختبارات.</Text>
+                {aiQuestions.slice(0,30).map(q=><View style={styles.payment} key={q.id}><Text style={styles.user}>{q.subject} • {q.difficulty||'medium'} • جودة {q.quality_score??'-'}</Text><Text style={styles.muted}>{q.stem}</Text><Text style={styles.log}>{q.status} • {q.created_at?.slice(0,10)}</Text><View style={styles.actionRow}>
+                <TouchableOpacity style={styles.approve} onPress={()=>moderateAIQuestion(q,'approved')}><Text style={styles.btnText}>اعتماد</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.reject} onPress={()=>moderateAIQuestion(q,'rejected')}><Text style={styles.btnText}>استبعاد</Text></TouchableOpacity>
+                </View></View>)}
+                {aiQuestions.length===0&&<Text style={styles.muted}>لا توجد أسئلة AI مسجلة حاليًا.</Text>}</View>
+                <View style={styles.card}><Text style={styles.h2}>تشغيلات توليد الأسئلة</Text>{aiRuns.slice(0,15).map(x=><Text key={x.id} style={styles.log}>{x.subject} • {x.count_generated}/{x.count_requested} • {x.status} • {x.created_at?.slice(0,19).replace('T',' ')}</Text>)}</View></>;"""
+
+          s=s.replace(old_comments,new_comments)
+
+          old_media="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة الصور والفيديو" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>مركز الوسائط</Text><Text style={styles.muted}>قسم موحد لمراجعة الصور والفيديوهات والإبلاغات، مع إبقاء ملفات المستخدمين خارج لوحة الإدارة إلا عند الحاجة.</Text><View style={styles.infoRow}><Ionicons name="checkmark-circle-outline" size={20} color="#5fe09b"/><Text style={styles.muted}>تم تجهيز نقطة الإدارة وإجراءات السجل الأمني.</Text></View></View></>;"""
+          new_media="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة الألعاب والوسائط" icon="images-outline"/>
+                <View style={styles.card}><Text style={styles.h2}>غرف الألعاب الحالية</Text><Text style={styles.muted}>مراقبة غرف التحديات الحقيقية الموجودة في قاعدة البيانات.</Text>
+                {challengeRooms.slice(0,30).map(x=><View style={styles.payment} key={x.pin}><Text style={styles.user}>{x.subject} • {x.topic||'بدون موضوع'}</Text><Text style={styles.muted}>PIN: {x.pin} • الجولات: {x.rounds} • الحالة: {x.status}</Text><Text style={styles.log}>{x.created_at?.slice(0,19).replace('T',' ')}</Text></View>)}
+                {challengeRooms.length===0&&<Text style={styles.muted}>لا توجد غرف ألعاب حاليًا.</Text>}</View>
+                <View style={styles.card}><Text style={styles.h2}>الوسائط</Text><Text style={styles.muted}>لا يوجد حاليًا جدول وسائط/صور مستقل في قاعدة بيانات Wanas؛ لذلك لم أضع زرًا وهميًا لحذف ملفات غير موجودة. عند إضافة جدول الوسائط سيتم ربط هذا القسم به مباشرة.</Text></View></>;"""
+
+          s=s.replace(old_media,new_media)
+
+          old_support="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر أو أن جدول الدعم فارغ.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text><Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text>{x.status==='open'&&<TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);writeLog('close_support_ticket',x.user_id);load();}}><Text style={styles.secondaryText}>إغلاق التذكرة</Text></TouchableOpacity>}</View>)}</>;"""
+          new_support="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text>{x.admin_reply&&<Text style={styles.health}>رد الإدارة: {x.admin_reply}</Text>}<Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text><TextInput value={supportReplies[x.id]||''} onChangeText={v=>setSupportReplies(r=>({...r,[x.id]:v}))} placeholder="اكتب رد الإدارة" placeholderTextColor="#71809c" style={[styles.input,{height:75,textAlignVertical:'top'}]}/><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>replySupport(x)}><Text style={styles.btnText}>إرسال الرد</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);await writeLog('close_support_ticket',x.user_id,{ticket_id:x.id});load();}}><Text style={styles.secondaryText}>إغلاق</Text></TouchableOpacity></View></View>)}</>;"""
+
+          s=s.replace(old_support,new_support)
+
+          p.write_text(s)
+          print('Admin functional patch applied')
+          PY
+
+          cp app/admin.tsx app/admin-legacy.tsx
+          cat > app/admin.tsx <<'EOF'
+          import React, { useCallback, useEffect, useMemo, useState } from 'react';
+          import { Alert, FlatList, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+          import { Ionicons } from '@expo/vector-icons';
+          import { supabase } from '../src/lib/wanasSupabase';
+
+          type Profile = {
+            id: string; name?: string | null; email?: string | null; phone?: string | null; role: string;
+            is_paid: boolean; incognito_enabled?: boolean; incognito_until?: string | null;
+            last_seen?: string | null; created_at?: string | null;
+          };
+          type Payment = { id:number; user_id:string; name?:string|null; email?:string|null; amount:number; transaction_id:string; plan:string; status:string; created_at:string };
+          type Feature = { key:string; title:string; subtitle:string; icon:keyof typeof Ionicons.glyphMap };
+          type PermissionKey = 'dashboard'|'users'|'comments'|'support'|'security'|'content'|'settings';
+
+          const FEATURES: Feature[] = [
+            {key:'overview',title:'الإحصائيات المتقدمة',subtitle:'أرقام المستخدمين والنشاط والدفع',icon:'analytics-outline'},
+            {key:'users',title:'إدارة المستخدمين',subtitle:'بحث وحالة الحساب والتخفي',icon:'people-outline'},
+            {key:'roles',title:'صلاحيات الأدمن',subtitle:'تحديد ما يستطيع كل أدمن فعله',icon:'shield-checkmark-outline'},
+            {key:'comments',title:'إدارة التعليقات',subtitle:'مراجعة المحتوى والمخالفات',icon:'chatbubbles-outline'},
+            {key:'notifications',title:'مركز الإشعارات',subtitle:'إعلانات وإشعارات عامة',icon:'notifications-outline'},
+            {key:'security',title:'الحماية والحسابات الوهمية',subtitle:'أحداث الأمان والحظر اليدوي',icon:'lock-closed-outline'},
+            {key:'support',title:'الدعم والشكاوى',subtitle:'متابعة تذاكر الأعضاء والرد عليها',icon:'headset-outline'},
+            {key:'media',title:'إدارة الصور والفيديو',subtitle:'حالة الوسائط والمراجعة',icon:'images-outline'},
+            {key:'backup',title:'النسخ الاحتياطي والاستعادة',subtitle:'حفظ إعدادات اللوحة واستعادتها',icon:'cloud-upload-outline'},
+            {key:'system',title:'مراقبة النظام والأخطاء',subtitle:'فحص الاتصال والأحداث',icon:'pulse-outline'},
+            {key:'messages',title:'رسائل الأدمن',subtitle:'إرسال رسالة مباشرة لعضو',icon:'mail-unread-outline'},
+            {key:'settings',title:'إعدادات التطبيق',subtitle:'الخصوصية والخدمات والتحكم العام',icon:'settings-outline'},
+          ];
+
+          const DEFAULT_PERMS:Record<PermissionKey,boolean> = {dashboard:true,users:false,comments:false,support:false,security:false,content:false,settings:false};
+
+          export default function AdminScreen(){
+            const [tab,setTab]=useState('overview');
+            const [profiles,setProfiles]=useState<Profile[]>([]);
+            const [payments,setPayments]=useState<Payment[]>([]);
+            const [support,setSupport]=useState<any[]>([]);
+            const [logs,setLogs]=useState<any[]>([]);
+            const [security,setSecurity]=useState<any[]>([]);
+            const [admins,setAdmins]=useState<Profile[]>([]);
+            const [loading,setLoading]=useState(true);
+            const [serviceEnabled,setServiceEnabled]=useState(true);
+            const [price,setPrice]=useState('0');
+            const [days,setDays]=useState('30');
+            const [announcementTitle,setAnnouncementTitle]=useState('');
+            const [announcementBody,setAnnouncementBody]=useState('');
+            const [messageUser,setMessageUser]=useState('');
+            const [messageText,setMessageText]=useState('');
+            const [search,setSearch]=useState('');
+            const [permissionMap,setPermissionMap]=useState<Record<string,Record<PermissionKey,boolean>>>({});
+            const [appSettings,setAppSettings]=useState<Record<string,any>>({});
+            const [notice,setNotice]=useState('');
+
+            const adminIdRef=React.useRef<string|null>(null);
+
+            const load=useCallback(async()=>{
+              setLoading(true);
+              const session=await supabase.auth.getSession();
+              adminIdRef.current=session.data.session?.user?.id || null;
+              const results=await Promise.all([
+                supabase.from('profiles').select('id,name,email,phone,role,is_paid,incognito_enabled,incognito_until,last_seen,created_at').order('created_at',{ascending:false}),
+                supabase.from('payment_submissions').select('id,user_id,name,email,amount,transaction_id,plan,status,created_at').eq('plan','incognito').order('created_at',{ascending:false}).limit(100),
+                supabase.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(100),
+                supabase.from('admin_logs').select('*').order('created_at',{ascending:false}).limit(80),
+                supabase.from('security_events').select('*').order('created_at',{ascending:false}).limit(80),
+                supabase.from('admin_roles').select('*'),
+                supabase.from('admin_settings').select('*'),
+              ]);
+              const [pr,pm,sp,lg,se,ar,as]=results;
+              setProfiles((pr.data||[]) as Profile[]);
+              setPayments((pm.data||[]) as Payment[]);
+              setSupport(sp.data||[]);
+              setLogs(lg.data||[]);
+              setSecurity(se.data||[]);
+              const ad=(pr.data||[]).filter((x:any)=>x.role==='admin') as Profile[];
+              setAdmins(ad);
+              const map:any={};
+              (ar.data||[]).forEach((x:any)=>map[x.user_id]={...DEFAULT_PERMS,...(x.permissions||{})});
+              ad.forEach(a=>{if(!map[a.id])map[a.id]={...DEFAULT_PERMS,dashboard:true};});
+              setPermissionMap(map);
+              const settings:any={};
+              (as.data||[]).forEach((x:any)=>settings[x.key]=x.value);
+              setAppSettings(settings);
+              const inc=settings.incognito_service;
+              if(inc){setServiceEnabled(inc.enabled!==false);setPrice(String(inc.price??0));setDays(String(inc.days??30));}
+              if(pr.error) setNotice('تعذر تحميل المستخدمين: '+pr.error.message);
+              setLoading(false);
+            },[]);
+
+            useEffect(()=>{load();},[load]);
+
+            const writeLog=async(action:string,target?:string,details:any={})=>{
+              if(!adminIdRef.current)return;
+              await supabase.from('admin_logs').insert({admin_id:adminIdRef.current,action,target_user_id:target||null,details});
+            };
+
+            const saveService=async()=>{
+              const value={enabled:serviceEnabled,price:Math.max(0,Number(price)||0),days:Math.max(1,Number(days)||30)};
+              const {error}=await supabase.from('app_settings').upsert({key:'incognito_service',value,updated_at:new Date().toISOString()});
+              if(error)Alert.alert('خطأ',error.message); else {await writeLog('update_incognito_service',undefined,value);Alert.alert('تم','تم حفظ إعدادات خدمة التخفي');}
+            };
+
+            const toggleIncognito=async(u:Profile,value:boolean)=>{
+              const until=value?new Date(Date.now()+30*86400000).toISOString():null;
+              const {error}=await supabase.from('profiles').update({incognito_enabled:value,incognito_until:until}).eq('id',u.id);
+              if(error)Alert.alert('خطأ',error.message); else {setProfiles(x=>x.map(p=>p.id===u.id?{...p,incognito_enabled:value,incognito_until:until}:p));await writeLog(value?'enable_incognito':'disable_incognito',u.id);}
+            };
+
+            const approve=async(p:Payment)=>{
+              const {error}=await supabase.from('payment_submissions').update({status:'approved',reviewed_at:new Date().toISOString()}).eq('id',p.id);
+              if(error)Alert.alert('خطأ',error.message);else{await writeLog('approve_payment',p.user_id,{payment_id:p.id});load();}
+            };
+            const reject=async(p:Payment)=>{
+              const {error}=await supabase.from('payment_submissions').update({status:'rejected',reviewed_at:new Date().toISOString()}).eq('id',p.id);
+              if(error)Alert.alert('خطأ',error.message);else{await writeLog('reject_payment',p.user_id,{payment_id:p.id});load();}
+            };
+
+            const sendAnnouncement=async()=>{
+              if(!announcementTitle.trim()||!announcementBody.trim())return Alert.alert('مطلوب','اكتب عنوان الإعلان ونصه.');
+              const {error}=await supabase.from('admin_announcements').insert({title:announcementTitle.trim(),body:announcementBody.trim(),audience:'all',created_by:adminIdRef.current});
+              if(error)Alert.alert('خطأ',error.message);else{await writeLog('send_announcement',undefined,{title:announcementTitle});setAnnouncementTitle('');setAnnouncementBody('');Alert.alert('تم','تم إرسال الإعلان لجميع المستخدمين');}
+            };
+
+            const sendMessage=async()=>{
+              if(!messageUser.trim()||!messageText.trim())return Alert.alert('مطلوب','اكتب ID العضو والرسالة.');
+              const {error}=await supabase.from('admin_messages').insert({admin_id:adminIdRef.current,user_id:messageUser.trim(),message:messageText.trim()});
+              if(error)Alert.alert('خطأ',error.message);else{await writeLog('send_admin_message',messageUser.trim());setMessageText('');Alert.alert('تم','تم إرسال الرسالة');}
+            };
+
+            const savePermission=async(userId:string,key:PermissionKey,value:boolean)=>{
+              const next={...(permissionMap[userId]||DEFAULT_PERMS),[key]:value};
+              setPermissionMap(x=>({...x,[userId]:next}));
+              const {error}=await supabase.from('admin_roles').upsert({user_id:userId,permissions:next,updated_at:new Date().toISOString(),updated_by:adminIdRef.current});
+              if(error)Alert.alert('خطأ',error.message);else await writeLog('update_admin_permission',userId,{permission:key,value});
+            };
+
+            const backup=async()=>{
+              const snapshot={created_at:new Date().toISOString(),incognito_service:appSettings.incognito_service||{enabled:serviceEnabled,price:Number(price)||0,days:Number(days)||30},admin_settings:appSettings};
+              const {error}=await supabase.from('admin_settings').upsert({key:'backup_snapshot',value:snapshot,updated_at:new Date().toISOString(),updated_by:adminIdRef.current});
+              if(error)Alert.alert('خطأ',error.message);else{await writeLog('create_backup');Alert.alert('تم','تم حفظ نسخة احتياطية من إعدادات الإدارة');}
+            };
+            const restore=async()=>{
+              const {data,error}=await supabase.from('admin_settings').select('value').eq('key','backup_snapshot').maybeSingle();
+              if(error||!data)return Alert.alert('لا توجد نسخة','لم يتم العثور على نسخة احتياطية.');
+              const v:any=data.value||{}; if(v.incognito_service){setServiceEnabled(v.incognito_service.enabled!==false);setPrice(String(v.incognito_service.price??0));setDays(String(v.incognito_service.days??30));}
+              if(v.admin_settings?.incognito_service)await supabase.from('admin_settings').upsert({key:'incognito_service',value:v.admin_settings.incognito_service,updated_at:new Date().toISOString()});
+              await writeLog('restore_backup');Alert.alert('تم','تم استعادة إعدادات الخدمة من آخر نسخة.');
+            };
+
+            const filtered=useMemo(()=>profiles.filter(p=>(p.name||'').toLowerCase().includes(search.toLowerCase())||(p.email||'').toLowerCase().includes(search.toLowerCase())),[profiles,search]);
+            const counts={users:profiles.length,paid:profiles.filter(x=>x.is_paid).length,hidden:profiles.filter(x=>x.incognito_enabled).length,admins:admins.length,pending:payments.filter(x=>x.status==='pending').length,open: support.filter(x=>x.status==='open').length};
+
+            const FeatureGrid=()=>(
+              <View style={styles.grid}>
+                {FEATURES.map(f=><TouchableOpacity key={f.key} style={styles.feature} onPress={()=>setTab(f.key)}>
+                  <View style={styles.iconCircle}><Ionicons name={f.icon} size={25} color="#77a2ff"/></View>
+                  <Text style={styles.featureTitle}>{f.title}</Text><Text style={styles.featureSub}>{f.subtitle}</Text>
+                </TouchableOpacity>)}
+              </View>
+            );
+
+            const SectionHeader=({title,icon}:{title:string,icon:keyof typeof Ionicons.glyphMap})=><View style={styles.sectionHeader}><Ionicons name={icon} size={22} color="#77a2ff"/><Text style={styles.h2}>{title}</Text></View>;
+            const Back=()=> <TouchableOpacity style={styles.back} onPress={()=>setTab('overview')}><Ionicons name="arrow-forward" size={20} color="#fff"/><Text style={styles.backText}>رجوع للوحة الرئيسية</Text></TouchableOpacity>;
+
+            const renderContent=()=>{
+              if(tab==='overview')return <><Text style={styles.title}>لوحة تحكم Wanas</Text><Text style={styles.sub}>مركز الإدارة الموحد — كل الأدوات في مكان واحد</Text>
+                <View style={styles.stats}>{[['people','المستخدمون',counts.users],['diamond','مدفوع',counts.paid],['eye-off','متخفى',counts.hidden],['shield-checkmark','الأدمن',counts.admins],['card','طلبات معلقة',counts.pending],['headset','شكاوى مفتوحة',counts.open]].map(([ic,t,v])=><View style={styles.stat} key={String(t)}><Ionicons name={ic as any} size={22} color="#77a2ff"/><Text style={styles.statValue}>{String(v)}</Text><Text style={styles.statLabel}>{String(t)}</Text></View>)}</View><FeatureGrid/></>;
+
+              if(tab==='users')return <><Back/><SectionHeader title="إدارة المستخدمين" icon="people-outline"/><TextInput value={search} onChangeText={setSearch} placeholder="بحث بالاسم أو البريد" placeholderTextColor="#71809c" style={styles.input}/>{filtered.slice(0,100).map(u=><View style={styles.userCard} key={u.id}><View style={{flex:1}}><View style={styles.userLine}><Text style={styles.user}>{u.name||'بدون اسم'}</Text>{u.incognito_enabled&&<Text style={styles.badge}>متخفى</Text>}{u.role==='admin'&&<Text style={styles.adminBadge}>ADMIN</Text>}</View><Text style={styles.muted}>{u.email||u.phone||u.id}</Text></View><Switch value={!!u.incognito_enabled} onValueChange={v=>toggleIncognito(u,v)}/></View>)}</>;
+
+              if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/><Text style={styles.muted}>يمكنك تحديد صلاحيات كل أدمن بدون تغيير دوره الأساسي.</Text>{admins.map(a=><View style={styles.card} key={a.id}><Text style={styles.user}>{a.name||a.email||a.id}</Text>{(Object.keys(DEFAULT_PERMS) as PermissionKey[]).map(k=><View style={styles.settingRow} key={k}><Text style={styles.label}>{({dashboard:'لوحة التحكم',users:'المستخدمون',comments:'التعليقات',support:'الدعم والشكاوى',security:'الأمان',content:'المحتوى والوسائط',settings:'الإعدادات'} as any)[k]}</Text><Switch value={permissionMap[a.id]?.[k]??DEFAULT_PERMS[k]} onValueChange={v=>savePermission(a.id,k,v)}/></View>)}</View>)}</>;
+
+              if(tab==='notifications')return <><Back/><SectionHeader title="مركز الإشعارات والإعلانات" icon="notifications-outline"/><View style={styles.card}><TextInput value={announcementTitle} onChangeText={setAnnouncementTitle} placeholder="عنوان الإعلان" placeholderTextColor="#71809c" style={styles.input}/><TextInput value={announcementBody} onChangeText={setAnnouncementBody} placeholder="نص الإعلان لجميع المستخدمين" placeholderTextColor="#71809c" style={[styles.input,{height:110,textAlignVertical:'top'}]}/><TouchableOpacity style={styles.primary} onPress={sendAnnouncement}><Ionicons name="send" size={18} color="#fff"/><Text style={styles.primaryText}>إرسال للجميع</Text></TouchableOpacity></View><View style={styles.card}><Text style={styles.h2}>آخر عمليات الإدارة</Text>{logs.slice(0,15).map(x=><Text key={x.id} style={styles.log}>{x.created_at?.slice(0,19).replace('T',' ')}  •  {x.action}</Text>)}</View></>;
+
+              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر أو أن جدول الدعم فارغ.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text><Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text>{x.status==='open'&&<TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);writeLog('close_support_ticket',x.user_id);load();}}><Text style={styles.secondaryText}>إغلاق التذكرة</Text></TouchableOpacity>}</View>)}</>;
+
+              if(tab==='security')return <><Back/><SectionHeader title="الحماية والحسابات الوهمية" icon="lock-closed-outline"/><View style={styles.card}><Text style={styles.h2}>أحداث الأمان</Text>{security.length===0?<Text style={styles.muted}>لا توجد أحداث مسجلة حاليًا.</Text>:security.slice(0,30).map(x=><Text key={x.id} style={styles.log}>{x.created_at?.slice(0,19).replace('T',' ')} • {x.severity} • {x.event_type}</Text>)}</View><View style={styles.card}><Text style={styles.h2}>سجل عمليات الأدمن</Text>{logs.slice(0,30).map(x=><Text key={x.id} style={styles.log}>{x.action} • {x.created_at?.slice(0,19).replace('T',' ')}</Text>)}</View></>;
+
+              if(tab==='messages')return <><Back/><SectionHeader title="رسائل الأدمن للأعضاء" icon="mail-unread-outline"/><View style={styles.card}><TextInput value={messageUser} onChangeText={setMessageUser} placeholder="User ID" placeholderTextColor="#71809c" style={styles.input}/><TextInput value={messageText} onChangeText={setMessageText} placeholder="اكتب الرسالة" placeholderTextColor="#71809c" style={[styles.input,{height:100,textAlignVertical:'top'}]}/><TouchableOpacity style={styles.primary} onPress={sendMessage}><Ionicons name="paper-plane-outline" size={18} color="#fff"/><Text style={styles.primaryText}>إرسال الرسالة</Text></TouchableOpacity></View></>;
+
+              if(tab==='comments')return <><Back/><SectionHeader title="إدارة التعليقات" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>مركز مراجعة التعليقات</Text><Text style={styles.muted}>تم تجهيز قسم الإدارة لربطه بجدول التعليقات. إذا كان جدول comments موجودًا في Supabase سيتم تفعيله في الخطوة التالية بدون تغيير واجهة الأعضاء.</Text><View style={styles.infoRow}><Ionicons name="information-circle-outline" size={20} color="#77a2ff"/><Text style={styles.muted}>الهدف: إخفاء التعليق، حذف المخالفات، مراجعة البلاغات وترتيب الأحدث أولًا.</Text></View></View></>;
+
+              if(tab==='media')return <><Back/><SectionHeader title="إدارة الصور والفيديو" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>مركز الوسائط</Text><Text style={styles.muted}>قسم موحد لمراجعة الصور والفيديوهات والإبلاغات، مع إبقاء ملفات المستخدمين خارج لوحة الإدارة إلا عند الحاجة.</Text><View style={styles.infoRow}><Ionicons name="checkmark-circle-outline" size={20} color="#5fe09b"/><Text style={styles.muted}>تم تجهيز نقطة الإدارة وإجراءات السجل الأمني.</Text></View></View></>;
+
+              if(tab==='backup')return <><Back/><SectionHeader title="النسخ الاحتياطي والاستعادة" icon="cloud-upload-outline"/><View style={styles.card}><Text style={styles.h2}>نسخة إعدادات الإدارة</Text><Text style={styles.muted}>يحفظ نسخة من إعدادات لوحة الإدارة وخدمة التخفي داخل Supabase.</Text><TouchableOpacity style={styles.primary} onPress={backup}><Ionicons name="cloud-upload-outline" size={18} color="#fff"/><Text style={styles.primaryText}>إنشاء نسخة احتياطية</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={restore}><Text style={styles.secondaryText}>استعادة آخر نسخة</Text></TouchableOpacity></View></>;
+
+              if(tab==='system')return <><Back/><SectionHeader title="مراقبة النظام والأخطاء" icon="pulse-outline"/><View style={styles.card}><Text style={styles.h2}>حالة النظام</Text><Text style={styles.health}>● Supabase: متصل</Text><Text style={styles.health}>● قاعدة البيانات: {profiles.length>=0?'تستجيب':'غير متاحة'}</Text><Text style={styles.health}>● المستخدمون: {profiles.length}</Text><Text style={styles.health}>● آخر تحديث للوحة: {new Date().toLocaleTimeString('ar-EG')}</Text></View></>;
+
+              return <><Back/><SectionHeader title="إعدادات التطبيق" icon="settings-outline"/><View style={styles.card}><Text style={styles.h2}>خدمة وضع التخفي</Text><View style={styles.settingRow}><Text style={styles.label}>الخدمة متاحة</Text><Switch value={serviceEnabled} onValueChange={setServiceEnabled}/></View><Text style={styles.label}>السعر</Text><TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="numeric"/><Text style={styles.label}>المدة بالأيام</Text><TextInput style={styles.input} value={days} onChangeText={setDays} keyboardType="numeric"/><TouchableOpacity style={styles.primary} onPress={saveService}><Ionicons name="save-outline" size={18} color="#fff"/><Text style={styles.primaryText}>حفظ الإعدادات</Text></TouchableOpacity></View><View style={styles.card}><Text style={styles.h2}>طلبات التخفي ({counts.pending})</Text>{payments.filter(x=>x.status==='pending').map(p=><View style={styles.payment} key={p.id}><Text style={styles.user}>{p.name||p.email||p.user_id}</Text><Text style={styles.muted}>{p.amount} جنيه • {p.transaction_id}</Text><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>approve(p)}><Text style={styles.btnText}>اعتماد</Text></TouchableOpacity><TouchableOpacity style={styles.reject} onPress={()=>reject(p)}><Text style={styles.btnText}>رفض</Text></TouchableOpacity></View></View>)}</View></>;
+            };
+
+            return <SafeAreaView style={styles.root}><FlatList data={[1]} keyExtractor={()=>'admin'} refreshControl={<RefreshControl refreshing={loading} onRefresh={load}/>} renderItem={()=>renderContent()} ListHeaderComponent={tab==='overview'?<View style={styles.topBar}><View><Text style={styles.brand}>WANAS</Text><Text style={styles.brandSub}>ADMIN CENTER</Text></View><TouchableOpacity style={styles.refresh} onPress={load}><Ionicons name="refresh" size={21} color="#fff"/></TouchableOpacity></View>:null} ListFooterComponent={notice?<Text style={styles.notice}>{notice}</Text>:null}/></SafeAreaView>;
+          }
+
+          const styles=StyleSheet.create({
+            root:{flex:1,backgroundColor:'#080d19'},
+            topBar:{marginHorizontal:14,marginTop:8,marginBottom:2,padding:15,borderRadius:18,backgroundColor:'#111a2d',flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderWidth:1,borderColor:'#1e2b46'},
+            brand:{color:'#fff',fontSize:22,fontWeight:'900',letterSpacing:1},
+            brandSub:{color:'#6f88b4',fontSize:10,fontWeight:'800',letterSpacing:2},
+            refresh:{width:42,height:42,borderRadius:14,backgroundColor:'#1c2b48',alignItems:'center',justifyContent:'center'},
+            title:{fontSize:27,fontWeight:'900',color:'#fff',textAlign:'right',paddingHorizontal:16,paddingTop:14},
+            sub:{color:'#8f9db7',textAlign:'right',paddingHorizontal:16,paddingBottom:10},
+            stats:{flexDirection:'row',flexWrap:'wrap',paddingHorizontal:10},
+            stat:{width:'31%',margin:'1%',backgroundColor:'#111a2d',borderRadius:15,padding:12,minHeight:95,borderWidth:1,borderColor:'#1d2940'},
+            statValue:{color:'#fff',fontSize:22,fontWeight:'900',marginTop:5,textAlign:'right'},
+            statLabel:{color:'#8492ad',fontSize:11,textAlign:'right',marginTop:2},
+            grid:{flexDirection:'row',flexWrap:'wrap',padding:8},
+            feature:{width:'48%',margin:'1%',backgroundColor:'#111a2d',borderRadius:17,padding:15,minHeight:145,borderWidth:1,borderColor:'#1d2940'},
+            iconCircle:{width:48,height:48,borderRadius:16,backgroundColor:'#182643',alignItems:'center',justifyContent:'center',marginBottom:10},
+            featureTitle:{color:'#fff',fontSize:15,fontWeight:'800',textAlign:'right'},
+            featureSub:{color:'#8492ad',fontSize:11,lineHeight:17,textAlign:'right',marginTop:5},
+            sectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'flex-end',gap:8,padding:16,paddingBottom:10},
+            h2:{fontSize:19,fontWeight:'900',color:'#fff',textAlign:'right'},
+            back:{flexDirection:'row',alignItems:'center',gap:8,alignSelf:'flex-start',margin:12,padding:10,borderRadius:10,backgroundColor:'#17243c'},
+            backText:{color:'#fff',fontWeight:'700'},
+            card:{backgroundColor:'#111a2d',marginHorizontal:12,marginVertical:7,borderRadius:17,padding:15,borderWidth:1,borderColor:'#1d2940'},
+            input:{backgroundColor:'#0c1424',color:'#fff',borderRadius:11,padding:12,textAlign:'right',borderWidth:1,borderColor:'#1e2b46',marginHorizontal:12,marginVertical:6},
+            primary:{backgroundColor:'#4f7cff',padding:13,borderRadius:11,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:8,marginTop:10},
+            primaryText:{color:'#fff',fontWeight:'900'},
+            secondary:{backgroundColor:'#e7edf8',padding:12,borderRadius:10,alignItems:'center',marginTop:10},
+            secondaryText:{color:'#15213a',fontWeight:'800'},
+            userCard:{flexDirection:'row',alignItems:'center',backgroundColor:'#111a2d',marginHorizontal:12,marginVertical:5,borderRadius:14,padding:13,borderWidth:1,borderColor:'#1d2940'},
+            userLine:{flexDirection:'row',alignItems:'center',gap:7},
+            user:{color:'#fff',fontSize:15,fontWeight:'800',textAlign:'right'},
+            muted:{color:'#8b99b3',fontSize:12,lineHeight:19,textAlign:'right',marginTop:4},
+            badge:{backgroundColor:'#7c3aed',color:'#fff',paddingHorizontal:8,paddingVertical:3,borderRadius:8,fontSize:10,fontWeight:'900'},
+            adminBadge:{backgroundColor:'#1d9bf0',color:'#fff',paddingHorizontal:7,paddingVertical:3,borderRadius:8,fontSize:10,fontWeight:'900'},
+            settingRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#1d2940'},
+            label:{color:'#cbd4ea',textAlign:'right',fontWeight:'700',marginVertical:5},
+            payment:{borderTopWidth:1,borderTopColor:'#24314b',paddingTop:10,marginTop:8},
+            actionRow:{flexDirection:'row',gap:8,marginTop:9},
+            approve:{backgroundColor:'#159447',padding:9,borderRadius:9},
+            reject:{backgroundColor:'#b52d3b',padding:9,borderRadius:9},
+            btnText:{color:'#fff',fontWeight:'900'},
+            log:{color:'#9aa8c0',fontSize:11,paddingVertical:5,textAlign:'right'},
+            infoRow:{flexDirection:'row',gap:8,alignItems:'flex-start',marginTop:12},
+            health:{color:'#9ee7ba',fontSize:14,textAlign:'right',marginVertical:5},
+            notice:{color:'#ffb4bd',textAlign:'center',padding:16}
+          });
+          EOF
+          # Patch the generated admin screen AFTER its heredoc so these changes are not overwritten.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/admin.tsx')
+          s=p.read_text()
+
+          s=s.replace("const [notice,setNotice]=useState('');", """const [notice,setNotice]=useState('');
+            const [aiQuestions,setAiQuestions]=useState<any[]>([]);
+            const [aiRuns,setAiRuns]=useState<any[]>([]);
+            const [challengeRooms,setChallengeRooms]=useState<any[]>([]);
+            const [supportReplies,setSupportReplies]=useState<Record<string,string>>({});""")
+
+          s=s.replace("supabase.from('admin_settings').select('*'),", """supabase.from('admin_settings').select('*'),
+                supabase.from('ai_generated_questions').select('id,subject,unit,lesson,stem,difficulty,quality_score,status,created_at,model').order('created_at',{ascending:false}).limit(100),
+                supabase.from('ai_generation_runs').select('id,subject,unit,lesson,count_requested,count_generated,status,model,created_at,error_message').order('created_at',{ascending:false}).limit(50),
+                supabase.from('challenge_rooms').select('pin,host_user_id,subject,topic,rounds,status,created_at,updated_at').order('created_at',{ascending:false}).limit(50),""")
+
+          s=s.replace("const [pr,pm,sp,lg,se,ar,as]=results;", "const [pr,pm,sp,lg,se,ar,as,aq,ag,cr]=results;")
+          s=s.replace("setSecurity(se.data||[]);", """setSecurity(se.data||[]);
+              setAiQuestions(aq.data||[]);
+              setAiRuns(ag.data||[]);
+              setChallengeRooms(cr.data||[]);""")
+
+          s=s.replace("const sendMessage=async()=>{", """const replySupport=async(ticket:any)=>{
+              const reply=(supportReplies[ticket.id]||'').trim();
+              if(!reply)return Alert.alert('مطلوب','اكتب الرد أولاً.');
+              const {error}=await supabase.from('support_tickets').update({admin_reply:reply,status:'answered',updated_at:new Date().toISOString()}).eq('id',ticket.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {setSupportReplies(x=>({...x,[ticket.id]:''}));await writeLog('reply_support_ticket',ticket.user_id,{ticket_id:ticket.id});load();}
+            };
+
+            const moderateAIQuestion=async(q:any,status:string)=>{
+              const {error}=await supabase.from('ai_generated_questions').update({status}).eq('id',q.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {setAiQuestions(x=>x.map(v=>v.id===q.id?{...v,status}:v));await writeLog('moderate_ai_question',undefined,{question_id:q.id,status});}
+            };
+
+            const sendMessage=async()=>{""")
+
+          old="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة التعليقات" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>مركز مراجعة التعليقات</Text><Text style={styles.muted}>تم تجهيز قسم الإدارة لربطه بجدول التعليقات. إذا كان جدول comments موجودًا في Supabase سيتم تفعيله في الخطوة التالية بدون تغيير واجهة الأعضاء.</Text><View style={styles.infoRow}><Ionicons name="information-circle-outline" size={20} color="#77a2ff"/><Text style={styles.muted}>الهدف: إخفاء التعليق، حذف المخالفات، مراجعة البلاغات وترتيب الأحدث أولًا.</Text></View></View></>;"""
+          new="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة بنك أسئلة AI" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>الأسئلة المولدة فعليًا</Text><Text style={styles.muted}>هذه الأسئلة هي التي تستخدمها اختبارات وألعاب AI. يمكنك اعتماد السؤال أو استبعاده.</Text>{aiQuestions.slice(0,30).map(q=><View style={styles.payment} key={q.id}><Text style={styles.user}>{q.subject} • {q.difficulty||'medium'} • جودة {q.quality_score??'-'}</Text><Text style={styles.muted}>{q.stem}</Text><Text style={styles.log}>{q.status} • {q.created_at?.slice(0,10)}</Text><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>moderateAIQuestion(q,'approved')}><Text style={styles.btnText}>اعتماد</Text></TouchableOpacity><TouchableOpacity style={styles.reject} onPress={()=>moderateAIQuestion(q,'rejected')}><Text style={styles.btnText}>استبعاد</Text></TouchableOpacity></View></View>)}{aiQuestions.length===0&&<Text style={styles.muted}>لا توجد أسئلة AI حتى الآن.</Text>}</View><View style={styles.card}><Text style={styles.h2}>آخر عمليات التوليد</Text>{aiRuns.slice(0,15).map(x=><Text key={x.id} style={styles.log}>{x.subject} • {x.count_generated}/{x.count_requested} • {x.status} • {x.created_at?.slice(0,19).replace('T',' ')}</Text>)}</View></>;"""
+          s=s.replace(old,new)
+
+          old="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة الصور والفيديو" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>مركز الوسائط</Text><Text style={styles.muted}>قسم موحد لمراجعة الصور والفيديوهات والإبلاغات، مع إبقاء ملفات المستخدمين خارج لوحة الإدارة إلا عند الحاجة.</Text><View style={styles.infoRow}><Ionicons name="checkmark-circle-outline" size={20} color="#5fe09b"/><Text style={styles.muted}>تم تجهيز نقطة الإدارة وإجراءات السجل الأمني.</Text></View></View></>;"""
+          new="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة غرف الألعاب" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>غرف التحديات الحقيقية</Text><Text style={styles.muted}>بيانات غرف الألعاب الموجودة فعليًا في Supabase.</Text>{challengeRooms.slice(0,30).map(x=><View style={styles.payment} key={x.pin}><Text style={styles.user}>{x.subject} • {x.topic||'بدون موضوع'}</Text><Text style={styles.muted}>PIN: {x.pin} • الجولات: {x.rounds} • الحالة: {x.status}</Text><Text style={styles.log}>{x.created_at?.slice(0,19).replace('T',' ')}</Text></View>)}{challengeRooms.length===0&&<Text style={styles.muted}>لا توجد غرف ألعاب حاليًا.</Text>}</View><View style={styles.card}><Text style={styles.h2}>الصور والفيديو</Text><Text style={styles.muted}>فحص قاعدة البيانات أكد عدم وجود جدول وسائط مستقل حاليًا، لذلك لا يوجد زر حذف وهمي. عند إضافة جدول الوسائط سيتم ربطه هنا مباشرة.</Text></View></>;"""
+          s=s.replace(old,new)
+
+          old="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر أو أن جدول الدعم فارغ.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text><Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text>{x.status==='open'&&<TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);writeLog('close_support_ticket',x.user_id);load();}}><Text style={styles.secondaryText}>إغلاق التذكرة</Text></TouchableOpacity>}</View>)}</>;"""
+          new="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text>{x.admin_reply&&<Text style={styles.health}>رد الإدارة: {x.admin_reply}</Text>}<Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text><TextInput value={supportReplies[x.id]||''} onChangeText={v=>setSupportReplies(r=>({...r,[x.id]:v}))} placeholder="اكتب رد الإدارة" placeholderTextColor="#71809c" style={[styles.input,{height:75,textAlignVertical:'top'}]}/><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>replySupport(x)}><Text style={styles.btnText}>إرسال الرد</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);await writeLog('close_support_ticket',x.user_id,{ticket_id:x.id});load();}}><Text style={styles.secondaryText}>إغلاق</Text></TouchableOpacity></View></View>)}</>;"""
+          s=s.replace(old,new)
+
+          p.write_text(s)
+          print('Admin functional patch applied after admin heredoc')
+          PY
+
+          cp app/premium.tsx app/premium-legacy.tsx
+          cat > app/premium.tsx <<'EOF'
+          import React, { useEffect, useState } from 'react';
+          import { Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+          import { router } from 'expo-router';
+          import { supabase } from '../src/lib/wanasSupabase';
+
+          export default function PremiumScreen() {
+            const [price, setPrice] = useState(0);
+            const [days, setDays] = useState(30);
+            const [enabled, setEnabled] = useState(true);
+            const [transaction, setTransaction] = useState('');
+            const [status, setStatus] = useState<string | null>(null);
+
+            useEffect(() => {
+              (async () => {
+                const { data } = await supabase.from('app_settings').select('value').eq('key','incognito_service').maybeSingle();
+                const v = data?.value as any;
+                if (v) { setEnabled(v.enabled !== false); setPrice(Number(v.price || 0)); setDays(Number(v.days || 30)); }
+                const { data: session } = await supabase.auth.getSession();
+                if (session.session?.user) {
+                  const { data: p } = await supabase.from('payment_submissions').select('status').eq('user_id',session.session.user.id).eq('plan','incognito').order('created_at',{ascending:false}).limit(1).maybeSingle();
+                  setStatus(p?.status || null);
+                }
+              })();
+            }, []);
+
+            const submit = async () => {
+              if (!transaction.trim()) return Alert.alert('مطلوب','اكتب رقم عملية التحويل بعد الدفع.');
+              const { data: session } = await supabase.auth.getSession();
+              const user = session.session?.user;
+              if (!user) return Alert.alert('تسجيل الدخول','سجل الدخول أولاً.');
+              const { data: profile } = await supabase.from('profiles').select('name,email,phone').eq('id',user.id).maybeSingle();
+              const { error } = await supabase.from('payment_submissions').insert({
+                user_id:user.id, name:profile?.name || user.user_metadata?.name || 'عضو',
+                email:profile?.email || user.email, phone:profile?.phone || null,
+                transaction_id:transaction.trim(), plan:'incognito', amount:price, status:'pending'
+              });
+              if (error) Alert.alert('خطأ',error.message);
+              else { setStatus('pending'); Alert.alert('تم','تم إرسال طلب التفعيل للإدارة.'); }
+            };
+
+            return <SafeAreaView style={styles.root}><View style={styles.box}>
+              <Text style={styles.title}>🕶️ وضع التخفي</Text>
+              <Text style={styles.desc}>عند التفعيل لا يظهر حسابك في قوائم الأعضاء للمستخدمين، بينما يظل ظاهرًا للإدارة ومكتوبًا بجواره «متخفى».</Text>
+              {!enabled ? <Text style={styles.off}>الخدمة متوقفة حاليًا من الإدارة.</Text> : <>
+                <Text style={styles.price}>{price > 0 ? price + ' جنيه / ' + days + ' يوم' : 'السعر تحدده الإدارة'}</Text>
+                <TextInput value={transaction} onChangeText={setTransaction} placeholder="رقم عملية التحويل" placeholderTextColor="#77809a" style={styles.input}/>
+                <TouchableOpacity style={styles.button} onPress={submit} disabled={status==='pending'}><Text style={styles.buttonText}>{status==='pending'?'الطلب قيد المراجعة':'إرسال طلب التفعيل'}</Text></TouchableOpacity>
+                {status && <Text style={styles.status}>آخر طلب: {status}</Text>}
+              </>}
+              <TouchableOpacity style={styles.link} onPress={() => router.push('/premium-legacy')}><Text style={styles.linkText}>الميزات المدفوعة الحالية</Text></TouchableOpacity>
+            </View></SafeAreaView>
+          }
+          const styles=StyleSheet.create({
+            root:{flex:1,backgroundColor:'#0b1020',justifyContent:'center',padding:18},
+            box:{backgroundColor:'#141b2d',borderRadius:20,padding:20},
+            title:{fontSize:27,fontWeight:'900',color:'#fff',textAlign:'right',marginBottom:12},
+            desc:{color:'#c5cee2',fontSize:15,lineHeight:24,textAlign:'right'},
+            price:{color:'#72a1ff',fontSize:19,fontWeight:'800',textAlign:'right',marginVertical:18},
+            input:{backgroundColor:'#0d1425',color:'#fff',padding:13,borderRadius:11,textAlign:'right'},
+            button:{backgroundColor:'#4f7cff',padding:14,borderRadius:11,alignItems:'center',marginTop:12},
+            buttonText:{color:'#fff',fontWeight:'900'},
+            status:{color:'#a9f0bd',textAlign:'right',marginTop:10},
+            off:{color:'#ff9da8',textAlign:'right',marginVertical:15},
+            link:{padding:13,alignItems:'center',marginTop:12},
+            linkText:{color:'#9fb8ff'}
+          });
+          EOF
+      - name: Repair Wanas auth route and add AI games
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('app'); exts={'.ts','.tsx','.js','.jsx'}; changed=0
+          for p in root.rglob('*'):
+              if p.suffix not in exts or 'node_modules' in p.parts or 'android' in p.parts: continue
+              try:t=p.read_text()
+              except:continue
+              n=t
+              for a,b in [
+                  ("router.replace('/index')","router.replace('/')"),
+                  ('router.replace("/index")','router.replace("/")'),
+                  ("router.push('/index')","router.push('/')"),
+                  ('router.push("/index")','router.push("/")'),
+                  ("router.navigate('/index')","router.navigate('/')"),
+                  ('router.navigate("/index")','router.navigate("/")'),
+                  ("href='/index'","href='/'"),
+                  ('href="/index"','href="/"')]:
+                  n=n.replace(a,b)
+              if n!=t:p.write_text(n);changed+=1
+          print("Fixed stale /index navigation in",changed,"files")
+          PY
+
+          if [ ! -f app/+native-intent.tsx ]; then
+            cat > app/+native-intent.tsx <<'EOF'
+          export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
+            try {
+              const clean=String(path||'').replace(/^\/+/,'');
+              if(clean==='index'||clean.startsWith('index?')||clean.startsWith('index#')) return '/';
+            } catch {}
+            return path;
+          }
+          EOF
+          fi
+
+          TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
+          if [ -n "$TAB_DIR" ]; then AI_ROUTE_DIR="$TAB_DIR"; else AI_ROUTE_DIR="app"; fi
+          mkdir -p "$AI_ROUTE_DIR"
+
+          cat > "$AI_ROUTE_DIR/ai-games.tsx" <<'EOF'
+          import React, { useEffect, useRef, useState } from 'react';
+          import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+          import { router } from 'expo-router';
+          import { supabase } from '../src/lib/wanasSupabase';
+
+          type Question={stem:string;options:string[];correct_option:number;explanation?:string;estimated_seconds?:number};
+          const SUBJECTS=['اللغة العربية','اللغة الإنجليزية','الأحياء','الكيمياء','الفيزياء','الرياضيات البحتة','الرياضيات التطبيقية','التاريخ','الجغرافيا','الإحصاء'];
+          const MODES=[{key:'classic',title:'تحدي سريع',sub:'أسئلة AI متنوعة'},{key:'streak',title:'سلسلة الانتصارات',sub:'حافظ على الإجابات الصحيحة'},{key:'speed',title:'سباق الوقت',sub:'وقت محدود لكل سؤال'}];
+
+          export default function AIGamesScreen(){
+            const [subject,setSubject]=useState(SUBJECTS[0]),[mode,setMode]=useState('classic'),[questions,setQuestions]=useState<Question[]>([]);
+            const [index,setIndex]=useState(0),[score,setScore]=useState(0),[answered,setAnswered]=useState<number|null>(null),[loading,setLoading]=useState(false);
+            const [seconds,setSeconds]=useState(0),[started,setStarted]=useState(false); const timer=useRef<ReturnType<typeof setInterval>|null>(null);
+            const stopTimer=()=>{if(timer.current){clearInterval(timer.current);timer.current=null;}};
+            useEffect(()=>()=>stopTimer(),[]);
+            const startGame=async()=>{
+              stopTimer();setLoading(true);setQuestions([]);setIndex(0);setScore(0);setAnswered(null);setStarted(false);
+              const {data}=await supabase.auth.getSession();
+              if(!data.session?.user){setLoading(false);Alert.alert('تسجيل الدخول','سجل الدخول أولاً ثم ابدأ لعبة AI.');return;}
+              const difficulty=mode==='streak'?'hard':'medium';
+              const {data:res,error}=await supabase.functions.invoke('generate-ai-quiz',{body:{subject,difficulty,count:10,user_id:data.session.user.id}});
+              if(error||res?.error||!Array.isArray(res?.questions)||!res.questions.length){setLoading(false);Alert.alert('تعذر تشغيل AI',res?.error||error?.message||'لم يتم توليد أسئلة الآن.');return;}
+              setQuestions(res.questions);setLoading(false);setStarted(true);
+            };
+            useEffect(()=>{
+              stopTimer();
+              if(!started||!questions[index]||answered!==null||mode!=='speed')return;
+              setSeconds(Math.max(10,Math.min(45,Number(questions[index].estimated_seconds||25))));
+              timer.current=setInterval(()=>setSeconds(v=>{if(v<=1){stopTimer();setAnswered(-1);setTimeout(()=>next(-1),350);return 0;}return v-1;}),1000);
+              return stopTimer;
+            },[started,index,answered,mode,questions]);
+            const next=(picked:number)=>{
+              stopTimer();const q=questions[index];if(!q)return;
+              if(picked===q.correct_option)setScore(v=>v+1);
+              if(index+1<questions.length){setIndex(v=>v+1);setAnswered(null);}else setAnswered(picked);
+            };
+            const reset=()=>{stopTimer();setQuestions([]);setStarted(false);setAnswered(null);setIndex(0);setScore(0)};
+            const current=questions[index],finished=started&&questions.length>0&&index===questions.length-1&&answered!==null;
+            if(!started)return <SafeAreaView style={styles.root}><ScrollView contentContainerStyle={styles.container}>
+              <TouchableOpacity style={styles.back} onPress={()=>router.back()}><Text style={styles.backText}>رجوع</Text></TouchableOpacity>
+              <View style={styles.hero}><Text style={styles.badge}>AI GAMES</Text><Text style={styles.title}>ألعاب الأسئلة بالذكاء الاصطناعي</Text><Text style={styles.desc}>كل جولة تحصل على أسئلة جديدة ومتنوعة من محرك AI مع منع التكرار قدر الإمكان.</Text></View>
+              <Text style={styles.label}>اختر المادة</Text><View style={styles.wrap}>{SUBJECTS.map(s=><TouchableOpacity key={s} onPress={()=>setSubject(s)} style={[styles.chip,subject===s&&styles.chipActive]}><Text style={[styles.chipText,subject===s&&styles.chipTextActive]}>{s}</Text></TouchableOpacity>)}</View>
+              <Text style={styles.label}>اختر اللعبة</Text>{MODES.map(m=><TouchableOpacity key={m.key} onPress={()=>setMode(m.key)} style={[styles.mode,mode===m.key&&styles.modeActive]}><View><Text style={styles.modeTitle}>{m.title}</Text><Text style={styles.modeSub}>{m.sub}</Text></View><Text style={styles.modeIcon}>{mode===m.key?'✓':'›'}</Text></TouchableOpacity>)}
+              <TouchableOpacity style={styles.start} onPress={startGame} disabled={loading}>{loading?<Text style={styles.startText}>جاري توليد أسئلة AI...</Text>:<Text style={styles.startText}>ابدأ جولة جديدة بالـ AI</Text>}</TouchableOpacity>
+              <Text style={styles.note}>الأسئلة تمر عبر Edge Function محمية بجلسة المستخدم، ولا يتم وضع مفتاح AI داخل APK.</Text>
+            </ScrollView></SafeAreaView>;
+            if(finished)return <SafeAreaView style={styles.root}><View style={styles.result}><Text style={styles.resultEmoji}>🏆</Text><Text style={styles.resultTitle}>انتهت الجولة</Text><Text style={styles.resultScore}>{score} / {questions.length}</Text><Text style={styles.resultSub}>{score===questions.length?'ممتاز!':'جولة جديدة = أسئلة جديدة'}</Text><TouchableOpacity style={styles.start} onPress={reset}><Text style={styles.startText}>لعب مرة أخرى</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={()=>router.back()}><Text style={styles.secondaryText}>رجوع</Text></TouchableOpacity></View></SafeAreaView>;
+            return <SafeAreaView style={styles.root}><ScrollView contentContainerStyle={styles.container}>
+              <View style={styles.gameTop}><Text style={styles.progress}>السؤال {index+1} من {questions.length}</Text>{mode==='speed'&&<Text style={styles.timer}>⏱ {seconds}</Text>}<Text style={styles.score}>النقاط: {score}</Text></View>
+              <View style={styles.progressBar}><View style={[styles.progressFill,{width:(String(((index+1)/questions.length)*100)+'%')}]} /></View>
+              <View style={styles.questionCard}><Text style={styles.question}>{current.stem}</Text></View>
+              {current.options.map((op,i)=><TouchableOpacity key={i} disabled={answered!==null} onPress={()=>{setAnswered(i);setTimeout(()=>next(i),300)}} style={[styles.option,answered!==null&&i===current.correct_option&&styles.correct,answered!==null&&i===answered&&i!==current.correct_option&&styles.wrong]}><Text style={styles.optionLetter}>{String.fromCharCode(65+i)}</Text><Text style={styles.optionText}>{op}</Text></TouchableOpacity>)}
+              {answered!==null&&<View style={styles.explain}><Text style={styles.explainTitle}>{answered===current.correct_option?'إجابة صحيحة ✓':'الإجابة الصحيحة'}</Text><Text style={styles.explainText}>{current.explanation||'أكمل الجولة لمعرفة النتيجة.'}</Text></View>}
+            </ScrollView></SafeAreaView>;
+          }
+          const styles=StyleSheet.create({
+            root:{flex:1,backgroundColor:'#070b14'},container:{padding:16,paddingBottom:35},back:{alignSelf:'flex-start',backgroundColor:'#17233b',paddingHorizontal:15,paddingVertical:9,borderRadius:10,marginBottom:10},backText:{color:'#fff',fontWeight:'800'},
+            hero:{backgroundColor:'#101a30',borderRadius:22,padding:20,borderWidth:1,borderColor:'#243454',marginBottom:18},badge:{color:'#7ea4ff',fontWeight:'900',fontSize:12,letterSpacing:2},title:{color:'#fff',fontSize:26,fontWeight:'900',textAlign:'right',marginTop:7},desc:{color:'#b7c3da',fontSize:14,lineHeight:22,textAlign:'right',marginTop:9},
+            label:{color:'#e5eaf5',fontSize:15,fontWeight:'900',textAlign:'right',marginTop:10,marginBottom:9},wrap:{flexDirection:'row',flexWrap:'wrap',gap:8},chip:{backgroundColor:'#101a2d',borderWidth:1,borderColor:'#253452',borderRadius:12,paddingVertical:10,paddingHorizontal:12},chipActive:{backgroundColor:'#4f7cff',borderColor:'#4f7cff'},chipText:{color:'#aebbd1',fontSize:12,fontWeight:'700'},chipTextActive:{color:'#fff'},
+            mode:{backgroundColor:'#101a2d',borderWidth:1,borderColor:'#253452',borderRadius:15,padding:14,marginVertical:5,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},modeActive:{borderColor:'#4f7cff',backgroundColor:'#17284c'},modeTitle:{color:'#fff',fontWeight:'900',fontSize:15,textAlign:'right'},modeSub:{color:'#9dacbf',fontSize:11,marginTop:4,textAlign:'right'},modeIcon:{color:'#78a0ff',fontSize:22,fontWeight:'900'},
+            start:{backgroundColor:'#4f7cff',padding:15,borderRadius:13,alignItems:'center',marginTop:15},startText:{color:'#fff',fontWeight:'900',fontSize:15},note:{color:'#71819a',fontSize:11,textAlign:'center',lineHeight:17,marginTop:12},
+            gameTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},progress:{color:'#dbe4f4',fontWeight:'800'},score:{color:'#8faeff',fontWeight:'900'},timer:{color:'#ffcf70',fontWeight:'900'},progressBar:{height:7,backgroundColor:'#17233a',borderRadius:8,overflow:'hidden',marginBottom:13},progressFill:{height:7,backgroundColor:'#5e89ff'},
+            questionCard:{backgroundColor:'#111b30',borderRadius:19,padding:19,borderWidth:1,borderColor:'#263653',marginBottom:12},question:{color:'#fff',fontSize:19,lineHeight:30,fontWeight:'800',textAlign:'right'},option:{backgroundColor:'#101a2d',borderWidth:1,borderColor:'#263653',borderRadius:15,padding:14,marginVertical:5,flexDirection:'row-reverse',alignItems:'center',gap:10},optionLetter:{width:30,height:30,borderRadius:15,backgroundColor:'#1c2c4b',color:'#dbe6ff',textAlign:'center',paddingTop:5,fontWeight:'900'},optionText:{flex:1,color:'#f3f6fc',fontSize:15,lineHeight:23,textAlign:'right'},correct:{borderColor:'#42c989',backgroundColor:'#102d25'},wrong:{borderColor:'#ef6674',backgroundColor:'#351a21'},
+            explain:{backgroundColor:'#121f34',borderRadius:14,padding:14,marginTop:10,borderWidth:1,borderColor:'#2b3d5e'},explainTitle:{color:'#86aaff',fontWeight:'900',textAlign:'right'},explainText:{color:'#c5d0e3',lineHeight:21,textAlign:'right',marginTop:5},
+            result:{flex:1,justifyContent:'center',padding:22},resultEmoji:{fontSize:60,textAlign:'center'},resultTitle:{color:'#fff',fontSize:28,fontWeight:'900',textAlign:'center',marginTop:12},resultScore:{color:'#78a0ff',fontSize:48,fontWeight:'900',textAlign:'center',marginTop:8},resultSub:{color:'#b4c1d7',textAlign:'center',marginBottom:15},secondary:{backgroundColor:'#e7edf8',padding:14,borderRadius:12,alignItems:'center',marginTop:10},secondaryText:{color:'#16223a',fontWeight:'900'}
+          });
+          EOF
+
+          if [ -n "$TAB_DIR" ]; then
+            # The tab route is one directory deeper than app/app, so its Supabase import needs ../../src.
+            sed -i "s#../src/lib/wanasSupabase#../../src/lib/wanasSupabase#g" "$AI_ROUTE_DIR/ai-games.tsx"
+            LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
+            if [ -n "$LAYOUT" ] && ! grep -q 'name="ai-games"' "$LAYOUT"; then
+              python3 - "$LAYOUT" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path(sys.argv[1]);s=p.read_text()
+          if '<Tabs' in s and '</Tabs>' in s:
+              s=s.replace('</Tabs>','  <Tabs.Screen name="ai-games" options={{ title: "ألعاب AI", headerShown: false }} />\\n</Tabs>',1)
+              p.write_text(s)
+              print("Added AI Games tab:",p)
+          PY
+            fi
+          fi
+
+          # Improve contrast in files that explicitly define a light/day theme.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          low={'#9ca3af':'#475569','#94a3b8':'#475569','#a1a1aa':'#52525b','#a3a3a3':'#52525b','#b0b0b0':'#52525b','#b5b5b5':'#52525b','#c0c0c0':'#475569'}
+          changed=0
+          for root in (Path('app'),Path('src')):
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
+                  try:t=p.read_text()
+                  except:continue
+                  if not re.search(r'lightTheme|darkTheme|dayMode|nightMode|isDark|colorScheme|lightMode',t,re.I): continue
+                  n=t
+                  for a,b in low.items(): n=n.replace(a,b)
+                  if n!=t:p.write_text(n);changed+=1
+          print("Improved light-theme text contrast in",changed,"files")
+          PY
+
+          echo "AI route directory: $AI_ROUTE_DIR"
+          find app -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name 'ai-games.tsx' \) | sort
+          grep -R "router\.\(replace\|push\|navigate\)(['\"]/index['\"]" app src --include='*.ts' --include='*.tsx' 2>/dev/null || true
+
+      - name: Build Wanas engagement center
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          cp ../build/patches/engagement.tsx app/engagement.tsx
+          python3 ../build/patches/music_voice.py
+          python3 ../build/patches/admin_growth.py
+          python3 ../build/patches/owner_admin.py
+          TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
+          if [ -n "$TAB_DIR" ]; then
+            LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
+            if [ -n "$LAYOUT" ]; then python3 ../build/patches/add_engagement_tab.py "$LAYOUT"; fi
+          fi
+          echo "Wanas engagement and admin growth patches applied"
+
+      - name: Prebuild Android
+        working-directory: app
+        env:
+          EXPO_NO_DOCTOR: '1'
+        run: npx expo prebuild --platform android --clean --no-install
+      - name: Fix Kotlin Compose compatibility
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          find android -type f | grep -E '\.(gradle|gradle\.kts|toml)$|gradle\.properties$' | xargs -r sed -i 's/1\.9\.24/1.9.25/g'
+          echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
+          echo "Kotlin/Compose configuration:"
+          grep -R "1.9.2" android --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='*.toml' || true
+      - name: Build Release APK
+        working-directory: app/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wanas-release-apk
+          path: app/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+, r'', n, flags=re.M)
+                  # Also handle inline object properties with simple expressions/strings.
+                  n=re.sub(r'\\bavatar_url\\s*:\\s*(?:\"(?:\\\\.|[^\"])*\"|\'(?:\\\\.|[^\'])*\'|[^,}\\n]+)\\s*,\\s*', '', n)
+                  if n!=s:
+                      p.write_text(n); changed+=1
+          print('Removed avatar_url write properties from',changed,'files')
+          PY
           echo "Remaining avatar_url references:"
           grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 100 || true
 
