@@ -56,9 +56,7 @@ s=s.replace(anchor,insert+anchor,1)
 start="if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>"
 idx=s.find(start)
 if idx<0: raise SystemExit('roles start missing')
-end=s.find("
-
-              if(tab==='notifications')",idx)
+end=s.find("\n\n              if(tab==='notifications')",idx)
 if end<0: raise SystemExit('roles end missing')
 roles="""if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>
                 <View style={styles.card}><Text style={styles.h2}>👑 صاحب التطبيق</Text><Text style={styles.muted}>صاحب التطبيق هو الحساب الذي يملك صلاحية إضافة أدمن وتحديد صلاحياته. الـOwner الحالي محفوظ في الإعدادات الآمنة.</Text><Text style={styles.health}>Owner ID: {ownerId||'غير محدد'}</Text>{adminIdRef.current===ownerId?<Text style={styles.health}>✓ أنت صاحب التطبيق ويمكنك إدارة الأدمن.</Text>:<Text style={styles.muted}>هذه الصفحة للعرض؛ تغيير الأدمن متاح لصاحب التطبيق فقط.</Text>}</View>
