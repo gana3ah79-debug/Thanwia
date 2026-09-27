@@ -147,7 +147,7 @@ jobs:
               if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
               try:t=p.read_text()
               except:continue
-              n=re.sub(r"(pathname\s*:\s*['"])\/index(['"])",r"\1/\2",t)
+              n=t.replace("pathname: '/index'","pathname: '/'").replace('pathname: "/index"','pathname: "/"')
               n=n.replace("href: '/index'","href: '/'").replace('href: "/index"','href: "/"')
               n=n.replace("url: 'wanas:///index'","url: 'wanas:///'").replace('url: "wanas:///index"','url: "wanas:///"')
               if n!=t:p.write_text(n)
