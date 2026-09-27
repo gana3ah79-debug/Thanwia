@@ -36,6 +36,10 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
+          echo "===== ROUTER FILES ====="
+          find app/app -maxdepth 3 -type f | sort | head -200 || true
+          echo "===== PACKAGE ====="
+          cat app/package.json | head -120 || true
       - name: Fix dynamic gift image imports
         shell: bash
         run: |
