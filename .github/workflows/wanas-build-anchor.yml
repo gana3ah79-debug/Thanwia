@@ -74,6 +74,13 @@ jobs:
       - name: Fix Expo Router query-string dependency
         working-directory: app
         run: npm install query-string@7.1.3 --save-exact --no-audit --no-fund
+      - name: Align Kotlin versions in Expo modules
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          grep -RIl --exclude-dir=.git '1.9.24' node_modules | xargs -r sed -i 's/1.9.24/1.9.25/g'
+          grep -R '1.9.24' node_modules/expo-modules-core node_modules/expo 2>/dev/null || true
       - name: Prebuild Android
         working-directory: app
         env:
