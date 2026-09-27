@@ -44,7 +44,7 @@ insert="""const saveChatControls=async()=>{
             };
             const setAdminGrant=async(userId:string,enabled:boolean,permissions:any)=>{
               if(adminIdRef.current!==ownerId)return Alert.alert('الصلاحية','هذه العملية متاحة لصاحب التطبيق فقط.');
-              const {error}=await supabase.from('app_admin_grants').upsert({user_id:userId,enabled,permissions,updated_at:new Date().toISOString(),updated_by:adminIdRef.current,created_by:adminIdRef.current},{onConflict:'user_id'});
+              const {error}=await supabase.rpc('owner_set_admin',{p_user_id:userId,p_enabled:enabled,p_permissions:permissions});
               if(error)Alert.alert('خطأ',error.message);else{setGrantMap((m:any)=>({...m,[userId]:{user_id:userId,enabled,permissions}}));await writeLog('owner_update_admin_grant',userId,{enabled,permissions});}
             };
             
