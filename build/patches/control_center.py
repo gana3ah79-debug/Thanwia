@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import os
 
 ROOT=Path('app')
 ADMIN=ROOT/'admin.tsx'
@@ -20,6 +21,16 @@ export default function PaymentScreen(){
  return <SafeAreaView style={s.root}><ScrollView contentContainerStyle={s.c}><TouchableOpacity style={s.back}onPress={()=>router.back()}><Text style={s.w}>رجوع</Text></TouchableOpacity><View style={s.hero}><Text style={s.title}>💳 الدفع والتفعيل</Text><Text style={s.m}>اختر الطريقة التي فعّلتها الإدارة ثم أرسل رقم العملية.</Text></View><Text style={s.h2}>طريقة الدفع</Text>{methods.map(x=><TouchableOpacity key={x.id}style={[s.card,method?.id===x.id&&s.sel]}onPress={()=>setMethod(x)}><Text style={s.w}>{x.display_name}</Text><Text style={s.blue}>{x.account_value||'تواصل مع الإدارة'}</Text><Text style={s.m}>{x.instructions}</Text></TouchableOpacity>)}<Text style={s.h2}>الخدمة</Text><TextInput value={product}onChangeText={setProduct}style={s.input}placeholder="اسم الخدمة"placeholderTextColor="#71809c"/><TextInput value={amount}onChangeText={setAmount}style={s.input}placeholder="المبلغ بالجنيه"keyboardType="numeric"placeholderTextColor="#71809c"/><TextInput value={ref}onChangeText={setRef}style={s.input}placeholder="رقم العملية / المرجع"placeholderTextColor="#71809c"/><TouchableOpacity style={s.btn}onPress={submit}><Text style={s.w}>إرسال طلب الدفع</Text></TouchableOpacity><Text style={s.h2}>طلباتي</Text>{orders.map(o=><View style={s.order}key={o.id}><Text style={s.w}>{o.product_key} • {o.amount} جنيه</Text><Text style={s.m}>{o.method_key} • {o.status}</Text></View>)}{loading&&<Text style={s.m}>جاري التحميل...</Text>}</ScrollView></SafeAreaView>}
 const s=StyleSheet.create({root:{flex:1,backgroundColor:'#070b14'},c:{padding:16,paddingBottom:40},back:{alignSelf:'flex-start',backgroundColor:'#17233b',padding:10,borderRadius:10},w:{color:'#fff',fontWeight:'800'},blue:{color:'#7ea4ff',fontWeight:'900',marginTop:5},m:{color:'#aab6cb',fontSize:13,textAlign:'right',marginTop:6},hero:{backgroundColor:'#101a30',padding:18,borderRadius:20,marginVertical:12},title:{color:'#fff',fontSize:25,fontWeight:'900',textAlign:'right'},h2:{color:'#fff',fontSize:18,fontWeight:'900',textAlign:'right',marginTop:15,marginBottom:8},card:{backgroundColor:'#111b30',padding:14,borderRadius:14,marginVertical:4,borderWidth:1,borderColor:'#263653'},sel:{borderColor:'#4f7cff',backgroundColor:'#17284c'},input:{backgroundColor:'#0c1424',color:'#fff',padding:13,borderRadius:10,marginVertical:5,textAlign:'right'},btn:{backgroundColor:'#4f7cff',padding:14,borderRadius:12,alignItems:'center',marginTop:8},order:{backgroundColor:'#101a2d',padding:12,borderRadius:10,marginVertical:3}});
 ''')
+
+def fix_generated_imports():
+    target=Path('src/lib/wanasSupabase.ts')
+    for p in [ROOT/'app/payment.tsx', ROOT/'app/room-tools.tsx']:
+        if not p.exists(): continue
+        rel=os.path.relpath(target, p.parent).replace('\\\\','/')
+        if not rel.startswith('.'): rel='./'+rel
+        s=p.read_text()
+        s=re.sub(r"from'[^']*src/lib/wanasSupabase'", "from'"+rel+"'", s)
+        p.write_text(s)
 
 def write_room_tools():
     p=ROOT/'app/room-tools.tsx'
@@ -105,6 +116,7 @@ write_payment()
 write_room_tools()
 patch_engagement()
 patch_admin()
+fix_generated_imports()
 print('Wanas control center patch applied')
 
 # Wanas control center v2: payment, room, feature and moderation controls are applied by the build workflow.
