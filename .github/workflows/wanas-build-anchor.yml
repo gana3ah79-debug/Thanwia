@@ -244,6 +244,17 @@ jobs:
           set -e
           file app/assets/images/*.png | tee /tmp/image-types.txt
           ! grep -E 'JPEG|JFIF' /tmp/image-types.txt
+      - name: Diagnose Wanas auth lifecycle
+        working-directory: app
+        shell: bash
+        run: |
+          set +e
+          echo '=== SUPABASE CLIENT / AUTH REFERENCES ==='
+          grep -RInE "createClient\(|signInWithPassword|signUp\(|signOut\(|getSession\(|getUser\(|onAuthStateChange|removeItem\(|clear\(\)|AsyncStorage" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 300 || true
+          echo '=== APP ROUTES ==='
+          find app -maxdepth 3 -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name '+not-found.tsx' \) -print | sort | head -n 100
+          echo '=== PACKAGE AUTH STORAGE ==='
+          node -e "const p=require('./package.json'); console.log({supabase:p.dependencies?.['@supabase/supabase-js'],asyncStorage:p.dependencies?.['@react-native-async-storage/async-storage'],router:p.dependencies?.['expo-router']})"
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
