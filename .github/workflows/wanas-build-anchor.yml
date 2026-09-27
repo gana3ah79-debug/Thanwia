@@ -36,6 +36,181 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
+      - name: Finalize Wanas auth persistence and route safety
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          mkdir -p app/app src/lib
+          cat > src/lib/wanasSupabase.ts <<'EOF'
+          import { AppState } from 'react-native';
+          import AsyncStorage from '@react-native-async-storage/async-storage';
+          import 'react-native-url-polyfill/auto';
+          import { createClient } from '@supabase/supabase-js';
+
+          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+
+          export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {
+              storage: AsyncStorage,
+              storageKey: 'wanas-auth-session',
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: false,
+            },
+          });
+
+          AppState.addEventListener('change', (state) => {
+            if (state === 'active') supabase.auth.startAutoRefresh();
+            else supabase.auth.stopAutoRefresh();
+          });
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots=[Path('app'),Path('src')]
+          files=[]
+          for root in roots:
+              if not root.exists(): continue
+              files += [p for p in root.rglob('*') if p.suffix in {'.ts','.tsx','.js','.jsx'} and 'node_modules' not in p.parts and 'android' not in p.parts]
+
+          def find_matching(s, start, op='(', cl=')'):
+              depth=0; quote=None; esc=False; line=False; block=False; i=start
+              while i<len(s):
+                  c=s[i]; n=s[i+1] if i+1<len(s) else ''
+                  if line:
+                      if c=='\n': line=False
+                  elif block:
+                      if c=='*' and n=='/': block=False; i+=1
+                  elif quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"": quote=c
+                      elif c=='/' and n=='/': line=True; i+=1
+                      elif c=='/' and n=='*': block=True; i+=1
+                      elif c==op: depth+=1
+                      elif c==cl:
+                          depth-=1
+                          if depth==0: return i
+                  i+=1
+              return -1
+
+          def split_args(s, start, end):
+              out=[]; last=start; depth=0; quote=None; esc=False; line=False; block=False; i=start
+              while i<end:
+                  c=s[i]; n=s[i+1] if i+1<end else ''
+                  if line:
+                      if c=='\n': line=False
+                  elif block:
+                      if c=='*' and n=='/': block=False; i+=1
+                  elif quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"": quote=c
+                      elif c=='/' and n=='/': line=True; i+=1
+                      elif c=='/' and n=='*': block=True; i+=1
+                      elif c in '({[': depth+=1
+                      elif c in ')}]': depth-=1
+                      elif c==',' and depth==0:
+                          out.append((last,i)); last=i+1
+                  i+=1
+              out.append((last,end))
+              return out
+
+          touched=0
+          for p in files:
+              if p.as_posix().endswith('src/lib/wanasSupabase.ts'): continue
+              try:s=p.read_text()
+              except:continue
+              if '@supabase/supabase-js' not in s or 'createClient(' not in s: continue
+              n=s
+              if '@react-native-async-storage/async-storage' not in n:
+                  lines=n.splitlines(True); pos=0
+                  while pos<len(lines) and (lines[pos].startswith('import ') or not lines[pos].strip()): pos+=1
+                  lines.insert(pos, "import AsyncStorage from '@react-native-async-storage/async-storage';\n")
+                  n=''.join(lines)
+              changed=False
+              search_from=0
+              while True:
+                  j=n.find('createClient(',search_from)
+                  if j<0: break
+                  open_i=j+len('createClient')
+                  close_i=find_matching(n,open_i,'(',')')
+                  if close_i<0: break
+                  spans=split_args(n,open_i+1,close_i)
+                  arg_text=[n[a:b].strip() for a,b in spans]
+                  if len(arg_text)<2:
+                      search_from=close_i+1; continue
+                  if len(arg_text)==2:
+                      repl=n[j:close_i+1]
+                      repl=repl[:-1]+", { auth: { storage: AsyncStorage, storageKey: 'wanas-auth-session', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } })"
+                      n=n[:j]+repl+n[close_i+1:]
+                      changed=True; search_from=j+len(repl); continue
+                  a,b=spans[2]; third=n[a:b].strip()
+                  if not third.startswith('{'):
+                      search_from=close_i+1; continue
+                  auth_match=re.search(r'\bauth\s*:\s*\{',third)
+                  if auth_match:
+                      ao=auth_match.end()-1
+                      ac=find_matching(third,ao,'{','}')
+                      if ac>ao:
+                          auth=third[ao+1:ac]
+                          for key,val in [('storage','AsyncStorage'),('storageKey',"'wanas-auth-session'"),('persistSession','true'),('autoRefreshToken','true'),('detectSessionInUrl','false')]:
+                              pat=r'\b'+re.escape(key)+r'\s*:\s*[^,}]+,?'
+                              if re.search(pat,auth):
+                                  auth=re.sub(pat,key+': '+val+',',auth,count=1)
+                              else:
+                                  auth=key+': '+val+', '+auth
+                          newthird=third[:ao+1]+auth+third[ac:]
+                      else:
+                          newthird=third
+                  else:
+                      newthird="{ auth: { storage: AsyncStorage, storageKey: 'wanas-auth-session', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }, "+third[1:]
+                  n=n[:a]+newthird+n[b:]
+                  changed=True
+                  search_from=a+len(newthird)
+              if changed:
+                  p.write_text(n); touched+=1
+          print('Supabase client files normalized:',touched)
+
+          native=Path('app/+native-intent.tsx')
+          native.write_text("""export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
+            try {
+              const raw = String(path || '');
+              const noScheme = raw.replace(/^[a-z][a-z0-9+.-]*:\/\/\/?/, '');
+              const clean = noScheme.replace(/^\/+/, '');
+              if (/^index(?:[/?#]|$)/i.test(clean)) return '/';
+              if (clean === '' || clean === '/') return '/';
+              return raw;
+            } catch {
+              return '/';
+            }
+          }
+          """)
+          Path('app/+not-found.tsx').write_text("""import { Redirect } from 'expo-router';
+          export default function NotFound() {
+            return <Redirect href="/" />;
+          }
+          """)
+          Path('app/app/index/index.tsx').write_text("""import { Redirect } from 'expo-router';
+          export default function LegacyIndexRoute() {
+            return <Redirect href="/" />;
+          }
+          """)
+          print('Native intent, not-found, and /index compatibility routes hardened')
+          PY
+
+          test -f app/+native-intent.tsx
+          test -f app/+not-found.tsx
+          test -f app/app/index/index.tsx
+
       - name: Fix dynamic gift image imports
         shell: bash
         run: |
