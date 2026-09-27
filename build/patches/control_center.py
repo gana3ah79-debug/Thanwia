@@ -37,6 +37,16 @@ export default function RoomTools(){
 const s=StyleSheet.create({r:{flex:1,backgroundColor:'#070b14'},c:{padding:16},back:{alignSelf:'flex-start',backgroundColor:'#17233b',padding:10,borderRadius:10},h:{color:'#fff',fontSize:25,fontWeight:'900',textAlign:'right',marginVertical:15},w:{color:'#fff',fontWeight:'800'},input:{backgroundColor:'#0c1424',color:'#fff',padding:13,borderRadius:10,marginVertical:6,textAlign:'right'},row:{backgroundColor:'#111b30',padding:14,borderRadius:12,marginVertical:4,flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center'},btn:{backgroundColor:'#4f7cff',padding:14,borderRadius:12,alignItems:'center',marginTop:10}});
 ''')
 
+def patch_engagement():
+    p=ROOT/'app/engagement.tsx'
+    if not p.exists(): return
+    s=p.read_text()
+    marker="<TouchableOpacity style={s.ai}onPress={()=>router.push('/ai-games')}><Text style={s.w}>🤖 جولة AI جديدة</Text></TouchableOpacity>"
+    add=marker+"<TouchableOpacity style={s.sec}onPress={()=>router.push('/payment')}><Text style={s.dark}>💳 الدفع والتفعيل</Text></TouchableOpacity>"
+    if marker in s and "router.push('/payment')" not in s:
+        s=s.replace(marker,add,1)
+    p.write_text(s)
+
 def patch_admin():
     if not ADMIN.exists(): print('admin.tsx missing; routes still added'); return
     s=ADMIN.read_text()
@@ -86,5 +96,6 @@ if(tab==='moderationControl')return <><Back/><SectionHeader title="مركز ال
 
 write_payment()
 write_room_tools()
+patch_engagement()
 patch_admin()
 print('Wanas control center patch applied')
