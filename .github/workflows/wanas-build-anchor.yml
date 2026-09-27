@@ -36,6 +36,14 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
+      - name: Configure Wanas Supabase environment
+        shell: bash
+        run: |
+          set -e
+          echo "EXPO_PUBLIC_SUPABASE_URL=https://aenuzbaqskhyqwatrggg.supabase.co" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2" >> "$GITHUB_ENV"
+          echo "Wanas Supabase environment configured for the mobile bundle"
+
       - name: Finalize Wanas auth persistence and route safety
         working-directory: app
         shell: bash
@@ -255,15 +263,6 @@ jobs:
           find app -maxdepth 3 -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name '+not-found.tsx' \) -print | sort | head -n 100
           echo '=== PACKAGE AUTH STORAGE ==='
           node -e "const p=require('./package.json'); console.log({supabase:p.dependencies?.['@supabase/supabase-js'],asyncStorage:p.dependencies?.['@react-native-async-storage/async-storage'],router:p.dependencies?.['expo-router']})"
-      - name: Dump Wanas auth source
-        working-directory: app
-        shell: bash
-        run: |
-          set -e
-          for f in src/lib/supabase.ts src/lib/supabaseApi.ts src/hooks/useAuth.tsx app/index.tsx app/_layout.tsx app/auth.tsx; do
-            echo "===== $f ====="
-            if [ -f "$f" ]; then sed -n '1,460p' "$f"; fi
-          done
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
