@@ -328,7 +328,7 @@ jobs:
             back:{flexDirection:'row',alignItems:'center',gap:8,alignSelf:'flex-start',margin:12,padding:10,borderRadius:10,backgroundColor:'#17243c'},
             backText:{color:'#fff',fontWeight:'700'},
             card:{backgroundColor:'#111a2d',marginHorizontal:12,marginVertical:7,borderRadius:17,padding:15,borderWidth:1,borderColor:'#1d2940'},
-            input:{backgroundColor:'#0c1424',color:'#fff,borderRadius:11,padding:12,textAlign:'right',borderWidth:1,borderColor:'#1e2b46',marginHorizontal:12,marginVertical:6},
+            input:{backgroundColor:'#0c1424',color:'#fff',borderRadius:11,padding:12,textAlign:'right',borderWidth:1,borderColor:'#1e2b46',marginHorizontal:12,marginVertical:6},
             primary:{backgroundColor:'#4f7cff',padding:13,borderRadius:11,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:8,marginTop:10},
             primaryText:{color:'#fff',fontWeight:'900'},
             secondary:{backgroundColor:'#e7edf8',padding:12,borderRadius:10,alignItems:'center',marginTop:10},
