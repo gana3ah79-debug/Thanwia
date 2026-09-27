@@ -759,188 +759,23 @@ jobs:
         shell: bash
         run: |
           set -e
-          cat > app/app/engagement.tsx <<'EOF'
-          import React, { useCallback, useEffect, useMemo, useState } from 'react';
-          import { Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-          import { router } from 'expo-router';
-          import { supabase } from '../src/lib/wanasSupabase';
-
-          type Q={id:string;stem:string;options:any;correct_option:number;explanation?:string;subject?:string;estimated_seconds?:number};
-          type Tab='daily'|'leaderboard'|'friends'|'achievements';
-
-          export default function EngagementScreen(){
-            const [tab,setTab]=useState<Tab>('daily');
-            const [refreshing,setRefreshing]=useState(false);
-            const [questions,setQuestions]=useState<Q[]>([]);
-            const [dailyId,setDailyId]=useState<string|null>(null);
-            const [dailyDone,setDailyDone]=useState(false);
-            const [idx,setIdx]=useState(0);
-            const [score,setScore]=useState(0);
-            const [answer,setAnswer]=useState<number|null>(null);
-            const [streak,setStreak]=useState<any>(null);
-            const [leaders,setLeaders]=useState<any[]>([]);
-            const [achievements,setAchievements]=useState<any[]>([]);
-            const [code,setCode]=useState('');
-            const [challenge,setChallenge]=useState<any>(null);
-            const [friendQuestions,setFriendQuestions]=useState<Q[]>([]);
-            const [friendIdx,setFriendIdx]=useState(0);
-            const [busy,setBusy]=useState(false);
-
-            const load=useCallback(async()=>{
-              setRefreshing(true);
-              const {data:session}=await supabase.auth.getSession();
-              const uid=session.session?.user?.id;
-              if(!uid){setRefreshing(false);return;}
-              const [dc,st,lb,ach,att]=await Promise.all([
-                supabase.rpc('ensure_daily_challenge'),
-                supabase.from('student_streaks').select('*').eq('user_id',uid).maybeSingle(),
-                supabase.from('profiles').select('id,name,track,xp,total_mins,current_activity,incognito_enabled').eq('incognito_enabled',false).order('xp',{ascending:false}).limit(20),
-                supabase.from('user_achievements').select('*').eq('user_id',uid).order('unlocked_at',{ascending:false}),
-                supabase.from('daily_challenge_attempts').select('id').eq('user_id',uid).limit(1)
-              ]);
-              setStreak(st?.data||null); setLeaders(lb.data||[]); setAchievements(ach.data||[]);
-              if(dc.data?.available){
-                setDailyId(dc.data.id);
-                const ids=(dc.data.question_ids||[]) as string[];
-                const qr=await supabase.from('ai_generated_questions').select('id,stem,options,correct_option,explanation,subject,estimated_seconds').in('id',ids);
-                setQuestions(qr.data||[]);
-              } else setQuestions([]);
-              setDailyDone(!!(att.data&&att.data.length));
-              setRefreshing(false);
-            },[]);
-
-            useEffect(()=>{load();},[load]);
-
-            const finishDaily=async(finalScore:number)=>{
-              if(!dailyId)return;
-              const {data:session}=await supabase.auth.getSession(); const uid=session.session?.user?.id;
-              if(!uid)return;
-              if(dailyDone){Alert.alert('تم بالفعل','أكملت تحدي اليوم بالفعل.');return;}
-              const {error}=await supabase.from('daily_challenge_attempts').insert({challenge_id:dailyId,user_id:uid,score:finalScore,total_questions:questions.length});
-              if(error && !String(error.message).includes('duplicate')){Alert.alert('خطأ',error.message);return;}
-              await supabase.rpc('record_game_activity',{p_questions:questions.length,p_correct:finalScore,p_xp:Math.max(10,finalScore*5)});
-              if(finalScore===questions.length){
-                await supabase.from('user_achievements').upsert({user_id:uid,achievement_key:'daily_perfect',title:'🏆 إتقان تحدي اليوم',metadata:{score:finalScore}});
-              }
-              setDailyDone(true); await load();
-            };
-
-            const chooseDaily=(picked:number)=>{
-              if(answer!==null)return;
-              const q=questions[idx]; setAnswer(picked);
-              setTimeout(()=>{
-                const nextScore=score+(picked===q.correct_option?1:0); setScore(nextScore);
-                if(idx+1<questions.length){setIdx(v=>v+1);setAnswer(null);}
-                else finishDaily(nextScore);
-              },450);
-            };
-
-            const createFriend=async()=>{
-              setBusy(true);
-              const {data,error}=await supabase.rpc('fc2_create_challenge',{p_subject:'متنوع',p_scope_type:'ai',p_scope_name:'AI Remix',p_question_mode:'mcq',p_rounds:5,p_turn_seconds:20});
-              setBusy(false);
-              if(error){Alert.alert('تعذر إنشاء التحدي',error.message);return;}
-              setChallenge(data);
-              Alert.alert('تم إنشاء التحدي','شارك الكود: '+(data?.code||data?.challenge?.code||''));
-            };
-
-            const joinFriend=async()=>{
-              if(!code.trim())return;
-              setBusy(true);
-              const {data,error}=await supabase.rpc('fc2_join_challenge',{p_code:code.trim().toUpperCase()});
-              setBusy(false);
-              if(error){Alert.alert('تعذر الانضمام',error.message);return;}
-              setChallenge(data); Alert.alert('تم','انضممت للتحدي.');
-            };
-
-            const startFriend=async()=>{
-              const cid=challenge?.id||challenge?.challenge_id;
-              if(!cid)return;
-              const {data,error}=await supabase.from('ai_generated_questions').select('id,stem,options,correct_option,explanation').eq('status','approved').order('created_at',{ascending:false}).limit(5);
-              if(error||!data?.length){Alert.alert('لا توجد أسئلة','شغل توليد AI من الألعاب أولاً.');return;}
-              const {data:started,error:e}=await supabase.rpc('fc2_start_challenge',{p_challenge_id:cid,p_questions:data});
-              if(e){Alert.alert('تعذر البدء',e.message);return;}
-              setFriendQuestions(data); setFriendIdx(0); setChallenge(started);
-            };
-
-            const answerFriend=async(picked:number)=>{
-              const q=friendQuestions[friendIdx]; const cid=challenge?.id||challenge?.challenge_id;
-              if(!q||!cid)return;
-              const ok=picked===q.correct_option;
-              const {error}=await supabase.rpc('fc2_answer',{p_challenge_id:cid,p_answer_text:String(picked),p_is_correct:ok,p_score:ok?10:0});
-              if(error){Alert.alert('خطأ',error.message);return;}
-              if(friendIdx+1<friendQuestions.length)setFriendIdx(v=>v+1);else {Alert.alert('انتهت الجولة','تم تسجيل إجاباتك.');setFriendQuestions([]);}
-            };
-
-            const nav=(t:Tab)=>{setTab(t);setIdx(0);setAnswer(null);setScore(0);};
-
-            return <SafeAreaView style={styles.root}><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load}/>} contentContainerStyle={styles.container}>
-              <TouchableOpacity style={styles.back} onPress={()=>router.back()}><Text style={styles.backText}>رجوع</Text></TouchableOpacity>
-              <View style={styles.hero}><Text style={styles.badge}>WANAS GAME CENTER</Text><Text style={styles.title}>مركز اللعب والتحديات</Text><Text style={styles.desc}>أسئلة متجددة بالذكاء الاصطناعي، تحدي يومي، نقاط، Streak وتحديات الأصدقاء.</Text></View>
-              <View style={styles.tabs}>{[['daily','تحدي اليوم'],['leaderboard','المتصدرون'],['friends','تحدي صديق'],['achievements','إنجازاتي']].map(([k,t])=><TouchableOpacity key={k} onPress={()=>nav(k as Tab)} style={[styles.tab,tab===k&&styles.tabActive]}><Text style={[styles.tabText,tab===k&&styles.tabTextActive]}>{t}</Text></TouchableOpacity>)}</View>
-
-              {tab==='daily'&&<View>
-                <View style={styles.stats}><View style={styles.stat}><Text style={styles.statNum}>🔥 {streak?.current_streak||0}</Text><Text style={styles.statLabel}>أيام متتالية</Text></View><View style={styles.stat}><Text style={styles.statNum}>🏆 {streak?.best_streak||0}</Text><Text style={styles.statLabel}>أفضل سلسلة</Text></View><View style={styles.stat}><Text style={styles.statNum}>⭐ {score}</Text><Text style={styles.statLabel}>نقاط الجولة</Text></View></View>
-                {dailyDone?<View style={styles.card}><Text style={styles.big}>✅ أكملت تحدي اليوم</Text><Text style={styles.muted}>غدًا ستظهر لك جولة جديدة.</Text></View>:questions.length===0?<View style={styles.card}><Text style={styles.big}>🤖 جاري تجهيز تحدي AI</Text><Text style={styles.muted}>إذا لم تتوفر أسئلة معتمدة، افتح ألعاب AI لتوليد أسئلة جديدة.</Text></View>:<View style={styles.card}><Text style={styles.progress}>السؤال {idx+1} من {questions.length}</Text><Text style={styles.question}>{questions[idx]?.stem}</Text>{(questions[idx]?.options||[]).map((op:any,i:number)=><TouchableOpacity key={i} disabled={answer!==null} onPress={()=>chooseDaily(i)} style={[styles.option,answer!==null&&i===questions[idx].correct_option&&styles.correct,answer!==null&&i===answer&&i!==questions[idx].correct_option&&styles.wrong]}><Text style={styles.letter}>{String.fromCharCode(65+i)}</Text><Text style={styles.optionText}>{String(op)}</Text></TouchableOpacity>)}</View>}
-                <TouchableOpacity style={styles.aiButton} onPress={()=>router.push('/ai-games')}><Text style={styles.aiButtonText}>🤖 جولة AI جديدة بأسئلة مختلفة</Text></TouchableOpacity>
-              </View>}
-
-              {tab==='leaderboard'&&<View>{leaders.map((u,i)=><View style={styles.rank} key={u.id}><Text style={styles.rankNo}>{i<3?['🥇','🥈','🥉'][i]:String(i+1)}</Text><View style={{flex:1}}><Text style={styles.user}>{u.name||'طالب'}</Text><Text style={styles.muted}>{u.track||'عام'} • {u.current_activity||'غير متصل'}</Text></View><Text style={styles.xp}>⭐ {u.xp||0}</Text></View>)}{leaders.length===0&&<Text style={styles.muted}>لا توجد بيانات متصدرين حتى الآن.</Text>}</View>}
-
-              {tab==='friends'&&<View><View style={styles.card}><Text style={styles.big}>🎮 أنشئ تحديًا</Text><Text style={styles.muted}>التحدي يستخدم أسئلة AI المعتمدة، ويمكن لصديقك الدخول بالكود.</Text><TouchableOpacity style={styles.aiButton} disabled={busy} onPress={createFriend}><Text style={styles.aiButtonText}>{busy?'جاري الإنشاء...':'إنشاء تحدي جديد'}</Text></TouchableOpacity>{challenge?.code&&<View style={styles.code}><Text style={styles.codeLabel}>كود التحدي</Text><Text style={styles.codeText}>{challenge.code}</Text><TouchableOpacity style={styles.secondary} onPress={startFriend}><Text style={styles.secondaryText}>ابدأ التحدي</Text></TouchableOpacity></View>}</View>
-                <View style={styles.card}><Text style={styles.big}>🔑 انضم بكود</Text><TextInput value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="مثال: W7K92" placeholderTextColor="#71809c" style={styles.input}/><TouchableOpacity style={styles.secondary} onPress={joinFriend}><Text style={styles.secondaryText}>انضم</Text></TouchableOpacity></View>
-                {friendQuestions.length>0&&<View style={styles.card}><Text style={styles.progress}>سؤال {friendIdx+1} من {friendQuestions.length}</Text><Text style={styles.question}>{friendQuestions[friendIdx]?.stem}</Text>{(friendQuestions[friendIdx]?.options||[]).map((op:any,i:number)=><TouchableOpacity key={i} onPress={()=>answerFriend(i)} style={styles.option}><Text style={styles.letter}>{String.fromCharCode(65+i)}</Text><Text style={styles.optionText}>{String(op)}</Text></TouchableOpacity>)}</View>}</View>}
-
-              {tab==='achievements'&&<View><View style={styles.card}><Text style={styles.big}>🏅 إنجازاتي</Text><Text style={styles.muted}>الإنجازات التي حصلت عليها أثناء استخدام Wanas.</Text></View>{achievements.map(a=><View style={styles.rank} key={a.achievement_key}><Text style={styles.rankNo}>🏅</Text><View style={{flex:1}}><Text style={styles.user}>{a.title}</Text><Text style={styles.muted}>{a.unlocked_at?.slice(0,10)}</Text></View></View>)}{achievements.length===0&&<Text style={styles.muted}>ابدأ اللعب لفتح أول إنجاز.</Text>}</View>}
-            </ScrollView></SafeAreaView>;
-          }
-
-          const styles=StyleSheet.create({
-            root:{flex:1,backgroundColor:'#070b14'},container:{padding:16,paddingBottom:40},back:{alignSelf:'flex-start',backgroundColor:'#17233b',paddingHorizontal:14,paddingVertical:9,borderRadius:10,marginBottom:10},backText:{color:'#fff',fontWeight:'800'},
-            hero:{backgroundColor:'#101a30',borderRadius:22,padding:20,borderWidth:1,borderColor:'#263653',marginBottom:14},badge:{color:'#7ea4ff',fontWeight:'900',fontSize:11,letterSpacing:1},title:{color:'#fff',fontSize:25,fontWeight:'900',textAlign:'right',marginTop:7},desc:{color:'#b7c3da',fontSize:14,lineHeight:22,textAlign:'right',marginTop:8},
-            tabs:{flexDirection:'row-reverse',flexWrap:'wrap',gap:7,marginBottom:12},tab:{backgroundColor:'#101a2d',borderWidth:1,borderColor:'#253452',borderRadius:11,paddingVertical:10,paddingHorizontal:11},tabActive:{backgroundColor:'#4f7cff',borderColor:'#4f7cff'},tabText:{color:'#aebbd1',fontWeight:'800',fontSize:12},tabTextActive:{color:'#fff'},
-            stats:{flexDirection:'row',gap:8,marginBottom:10},stat:{flex:1,backgroundColor:'#111b30',borderRadius:15,padding:12,borderWidth:1,borderColor:'#263653'},statNum:{color:'#fff',fontSize:18,fontWeight:'900',textAlign:'center'},statLabel:{color:'#8fa0ba',fontSize:10,textAlign:'center',marginTop:4},
-            card:{backgroundColor:'#111b30',borderRadius:18,padding:16,borderWidth:1,borderColor:'#263653',marginVertical:6},big:{color:'#fff',fontSize:19,fontWeight:'900',textAlign:'right'},muted:{color:'#9eabc1',fontSize:12,lineHeight:19,textAlign:'right',marginTop:5},progress:{color:'#8eacff',fontWeight:'900',textAlign:'right'},question:{color:'#fff',fontSize:19,lineHeight:29,fontWeight:'800',textAlign:'right',marginVertical:14},
-            option:{backgroundColor:'#101a2d',borderWidth:1,borderColor:'#263653',borderRadius:13,padding:13,marginVertical:5,flexDirection:'row-reverse',alignItems:'center',gap:10},letter:{width:29,height:29,borderRadius:15,backgroundColor:'#1c2c4b',color:'#fff',textAlign:'center',paddingTop:5,fontWeight:'900'},optionText:{flex:1,color:'#f4f7fc',fontSize:15,lineHeight:22,textAlign:'right'},correct:{borderColor:'#42c989',backgroundColor:'#102d25'},wrong:{borderColor:'#ef6674',backgroundColor:'#351a21'},
-            aiButton:{backgroundColor:'#4f7cff',padding:14,borderRadius:12,alignItems:'center',marginTop:10},aiButtonText:{color:'#fff',fontWeight:'900'},secondary:{backgroundColor:'#e7edf8',padding:12,borderRadius:10,alignItems:'center',marginTop:10},secondaryText:{color:'#15213a',fontWeight:'900'},input:{backgroundColor:'#0c1424',color:'#fff',borderRadius:11,padding:12,textAlign:'center',borderWidth:1,borderColor:'#263653',marginTop:10},code:{backgroundColor:'#0c1424',padding:15,borderRadius:13,marginTop:12,borderWidth:1,borderColor:'#30466e'},codeLabel:{color:'#9eabc1',textAlign:'center'},codeText:{color:'#fff',fontSize:34,fontWeight:'900',letterSpacing:4,textAlign:'center',marginTop:5},rank:{flexDirection:'row-reverse',alignItems:'center',backgroundColor:'#111b30',borderRadius:14,padding:13,marginVertical:5,borderWidth:1,borderColor:'#263653'},rankNo:{width:42,textAlign:'center',fontSize:20},user:{color:'#fff',fontSize:15,fontWeight:'900',textAlign:'right'},xp:{color:'#8eacff',fontWeight:'900'}
-          });
-          EOF
-
-          # Add the Game Center to the existing tabs without disturbing other routes.
+          cp ../build/patches/engagement.tsx app/app/engagement.tsx
+          python3 ../build/patches/admin_growth.py
           TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
           if [ -n "$TAB_DIR" ]; then
             LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
             if [ -n "$LAYOUT" ] && ! grep -q 'name="engagement"' "$LAYOUT"; then
               python3 - "$LAYOUT" <<'PY'
-          import sys
-          from pathlib import Path
-          p=Path(sys.argv[1]);s=p.read_text()
-          s=s.replace('</Tabs>','  <Tabs.Screen name="engagement" options={{ title: "مركز اللعب", headerShown: false }} />\\n</Tabs>',1)
-          p.write_text(s)
-          print("Added engagement tab")
-          PY
+import sys
+from pathlib import Path
+p=Path(sys.argv[1]); s=p.read_text()
+if '</Tabs>' in s:
+    s=s.replace('</Tabs>','  <Tabs.Screen name="engagement" options={{ title: "مركز اللعب", headerShown: false }} />\n</Tabs>',1)
+    p.write_text(s)
+PY
             fi
           fi
-
-          # Extend the admin dashboard with real analytics/control views.
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('app/admin.tsx'); s=p.read_text()
-          old="{key:'settings',title:'إعدادات التطبيق',subtitle:'الخصوصية والخدمات والتحكم العام',icon:'settings-outline'},"
-          new=old+"""\\n            {key:'aiControl',title:'مركز تحكم AI',subtitle:'توليد ومراجعة الأسئلة',icon:'sparkles-outline'},
-            {key:'gameControl',title:'تحكم الألعاب',subtitle:'التحديات والـStreak والمتصدرين',icon:'game-controller-outline'},
-            {key:'analytics',title:'تحليلات Wanas',subtitle:'نشاط الألعاب وAI والمستخدمين',icon:'bar-chart-outline'},"""
-          s=s.replace(old,new,1)
-          anchor="              return <><Back/><SectionHeader title=\"إعدادات التطبيق\" icon=\"settings-outline\"/>"
-          branches="""              if(tab==='aiControl')return <><Back/><SectionHeader title="مركز تحكم AI" icon="sparkles-outline"/><View style={styles.card}><Text style={styles.h2}>بنك الأسئلة</Text><Text style={styles.health}>إجمالي الأسئلة: {aiQuestions.length}</Text><Text style={styles.health}>معتمدة: {aiQuestions.filter((x:any)=>x.status==='approved').length}</Text><Text style={styles.health}>مستبعدة: {aiQuestions.filter((x:any)=>x.status==='rejected').length}</Text><Text style={styles.health}>آخر تشغيلات التوليد: {aiRuns.length}</Text></View><View style={styles.card}><Text style={styles.h2}>آخر الأسئلة</Text>{aiQuestions.slice(0,12).map((q:any)=><Text key={q.id} style={styles.log}>{q.subject} • {q.difficulty||'medium'} • {q.status} • {String(q.stem||'').slice(0,90)}</Text>)}</View></>;
-              if(tab==='gameControl')return <><Back/><SectionHeader title="تحكم الألعاب" icon="game-controller-outline"/><View style={styles.card}><Text style={styles.h2}>غرف التحديات</Text><Text style={styles.health}>إجمالي الغرف: {challengeRooms.length}</Text><Text style={styles.health}>انتظار: {challengeRooms.filter((x:any)=>x.status==='waiting').length}</Text><Text style={styles.health}>نشطة: {challengeRooms.filter((x:any)=>x.status==='active').length}</Text><Text style={styles.health}>منتهية: {challengeRooms.filter((x:any)=>x.status==='finished').length}</Text></View><View style={styles.card}><Text style={styles.h2}>مفاتيح التشغيل</Text><Text style={styles.muted}>الألعاب الحالية تستخدم AI والبنك المعتمد تلقائيًا. إيقاف لعبة بعينها يحتاج Flag مستقل حتى لا نعطل وظائف أخرى.</Text></View></>;
-              if(tab==='analytics')return <><Back/><SectionHeader title="تحليلات Wanas" icon="bar-chart-outline"/><View style={styles.stats}>{[['people','المستخدمون',counts.users],['game-controller','غرف الألعاب',challengeRooms.length],['sparkles','أسئلة AI',aiQuestions.length],['headset','شكاوى',counts.open]].map(([ic,t,v])=><View style={styles.stat} key={String(t)}><Ionicons name={ic as any} size={22} color="#77a2ff"/><Text style={styles.statValue}>{String(v)}</Text><Text style={styles.statLabel}>{String(t)}</Text></View>)}</View><View style={styles.card}><Text style={styles.h2}>AI</Text>{aiRuns.slice(0,20).map((x:any)=><Text key={x.id} style={styles.log}>{x.subject} • {x.count_generated}/{x.count_requested} • {x.status}</Text>)}</View></>;
-"""
-          if anchor in s and "if(tab==='aiControl')" not in s:
-              s=s.replace(anchor,branches+anchor,1)
-          p.write_text(s)
-          print('Expanded admin controls')
-          PY
+          echo "Wanas engagement and admin growth patches applied"
 
       - name: Prebuild Android
         working-directory: app
