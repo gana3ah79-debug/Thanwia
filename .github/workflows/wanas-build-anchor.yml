@@ -551,6 +551,8 @@ jobs:
           EOF
 
           if [ -n "$TAB_DIR" ]; then
+            # The tab route is one directory deeper than app/app, so its Supabase import needs ../../src.
+            sed -i "s#../src/lib/wanasSupabase#../../src/lib/wanasSupabase#g" "$AI_ROUTE_DIR/ai-games.tsx"
             LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
             if [ -n "$LAYOUT" ] && ! grep -q 'name="ai-games"' "$LAYOUT"; then
               python3 - "$LAYOUT" <<'PY'
