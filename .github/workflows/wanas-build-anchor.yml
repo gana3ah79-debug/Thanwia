@@ -82,7 +82,7 @@ jobs:
           for root in node_modules/expo-modules-core node_modules/expo node_modules/@expo; do
             if [ -d "$root" ]; then
               find "$root" -type f \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' -o -name 'libs.versions.toml' \) -print0 |
-                xargs -0 -r sed -i 's/1\.9\.24/1.9.25/g'
+                xargs -0 -r sed -i 's/1\.9\.24/1.9.25/g; s/1\.5\.15/1.5.14/g'
             fi
           done
           echo "Remaining Kotlin 1.9.24 references in Expo Gradle files:"
