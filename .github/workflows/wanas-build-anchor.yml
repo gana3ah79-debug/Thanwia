@@ -1,5 +1,6 @@
 name: Wanas APK Builder
 # Control-center/payment/room rebuild trigger
+# V2 control-center rebuild: cash/InstaPay, room tools, feature flags, moderation controls
 on:
   push:
     branches:
