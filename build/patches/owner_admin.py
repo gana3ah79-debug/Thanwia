@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 p=Path('app/admin.tsx'); s=p.read_text()
 
 s=s.replace(
@@ -56,8 +57,9 @@ s=s.replace(anchor,insert+anchor,1)
 start='if(tab===\'roles\')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>'
 idx=s.find(start)
 if idx<0: raise SystemExit('roles start missing')
-end=s.find("\n\n              if(tab==='notifications')",idx)
-if end<0: raise SystemExit('roles end missing')
+m=re.search(r"\n\s*if\(tab==='[^']+'\)",s[idx:])
+if not m: raise SystemExit('roles end missing')
+end=idx+m.start()
 roles="""if(tab==='roles')return <><Back/><SectionHeader title="صلاحيات الأدمن" icon="shield-checkmark-outline"/>
                 <View style={styles.card}><Text style={styles.h2}>👑 صاحب التطبيق</Text><Text style={styles.muted}>صاحب التطبيق هو الحساب الذي يملك صلاحية إضافة أدمن وتحديد صلاحياته. الـOwner الحالي محفوظ في الإعدادات الآمنة.</Text><Text style={styles.health}>Owner ID: {ownerId||'غير محدد'}</Text>{adminIdRef.current===ownerId?<Text style={styles.health}>✓ أنت صاحب التطبيق ويمكنك إدارة الأدمن.</Text>:<Text style={styles.muted}>هذه الصفحة للعرض؛ تغيير الأدمن متاح لصاحب التطبيق فقط.</Text>}</View>
                 {admins.map(a=><View style={styles.card} key={a.id}><Text style={styles.user}>{a.name||a.email||a.id}</Text>
