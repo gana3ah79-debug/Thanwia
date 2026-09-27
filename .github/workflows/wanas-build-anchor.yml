@@ -255,6 +255,15 @@ jobs:
           find app -maxdepth 3 -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name '+not-found.tsx' \) -print | sort | head -n 100
           echo '=== PACKAGE AUTH STORAGE ==='
           node -e "const p=require('./package.json'); console.log({supabase:p.dependencies?.['@supabase/supabase-js'],asyncStorage:p.dependencies?.['@react-native-async-storage/async-storage'],router:p.dependencies?.['expo-router']})"
+      - name: Dump Wanas auth source
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          for f in src/lib/supabase.ts src/lib/supabaseApi.ts src/hooks/useAuth.tsx app/index.tsx app/_layout.tsx app/auth.tsx; do
+            echo "===== $f ====="
+            if [ -f "$f" ]; then sed -n '1,460p' "$f"; fi
+          done
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
