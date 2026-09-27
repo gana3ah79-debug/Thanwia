@@ -106,6 +106,32 @@ jobs:
                       p.write_text(n); changed+=1
           print('Removed avatar_url write lines from',changed,'files')
           PY
+          # Final hard-disable of legacy avatar_url reads in every select form.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots=[Path('app'),Path('src')]
+          changed=0
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
+                  try: s=p.read_text()
+                  except: continue
+                  n=s
+                  # Remove avatar_url from quoted .select('...') / .select("...") / template selects.
+                  pat=r"(\.select\(\s*)(['\"`])([^'\"`]*?)\2"
+                  def clean(m):
+                      body=m.group(3)
+                      if 'avatar_url' not in body: return m.group(0)
+                      fields=[x.strip() for x in body.split(',') if x.strip() and x.strip()!='avatar_url']
+                      return m.group(1)+m.group(2)+','.join(fields)+m.group(2)
+                  n=re.sub(pat,clean,n)
+                  # Remove standalone legacy references that remain in profile reads.
+                  n=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\s*,?', '', n)
+                  if n!=s: p.write_text(n); changed+=1
+          print('Final avatar_url scrubbed files:',changed)
+          PY
           echo "Remaining avatar_url references:"
           grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 100 || true
 
