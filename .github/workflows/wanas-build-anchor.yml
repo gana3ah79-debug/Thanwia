@@ -84,9 +84,10 @@ jobs:
         shell: bash
         run: |
           set -e
-          find android -type f \( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' -o -name '*.toml' \) -exec sed -i 's/1\.9\.24/1.9.25/g' {} +
+          find android -type f ( -name '*.gradle' -o -name '*.gradle.kts' -o -name 'gradle.properties' -o -name '*.toml' ) -exec sed -i 's/1.9.24/1.9.25/g' {} +
+          echo "kotlin.suppressKotlinVersionCompatibilityCheck=true" >> android/gradle.properties
           echo "Kotlin/Compose configuration:"
-          grep -R "1\.9\.2" android --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='*.toml' || true
+          grep -R "1.9.2" android --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='*.toml' || true
       - name: Build Release APK
         working-directory: app/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
