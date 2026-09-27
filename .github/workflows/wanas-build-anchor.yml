@@ -764,16 +764,7 @@ jobs:
           TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
           if [ -n "$TAB_DIR" ]; then
             LAYOUT="$(find "$TAB_DIR" -maxdepth 1 -type f -name '_layout.tsx' -print -quit)"
-            if [ -n "$LAYOUT" ] && ! grep -q 'name="engagement"' "$LAYOUT"; then
-              python3 - "$LAYOUT" <<'PY'
-import sys
-from pathlib import Path
-p=Path(sys.argv[1]); s=p.read_text()
-if '</Tabs>' in s:
-    s=s.replace('</Tabs>','  <Tabs.Screen name="engagement" options={{ title: "مركز اللعب", headerShown: false }} />\n</Tabs>',1)
-    p.write_text(s)
-PY
-            fi
+            if [ -n "$LAYOUT" ]; then python3 ../build/patches/add_engagement_tab.py "$LAYOUT"; fi
           fi
           echo "Wanas engagement and admin growth patches applied"
 
