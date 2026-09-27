@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          mkdir -p app/index src/lib
+          mkdir -p app/app src/lib
           cat > src/lib/wanasSupabase.ts <<'EOF'
           import { createClient } from '@supabase/supabase-js';
 
@@ -109,11 +109,11 @@ jobs:
           });
           EOF
 
-          cat > app/index/index.tsx <<'EOF'
+          cat > app/app/index.tsx <<'EOF'
           import React, { useEffect, useState } from 'react';
           import { ActivityIndicator, View } from 'react-native';
           import { Redirect } from 'expo-router';
-          import { supabase } from '../../src/lib/wanasSupabase';
+          import { supabase } from '../src/lib/wanasSupabase';
 
           export default function IndexDeepLink() {
             const [ready, setReady] = useState(false);
@@ -137,7 +137,7 @@ jobs:
               </View>;
             }
 
-            return <Redirect href={loggedIn ? '/(tabs)/home' : '/auth'} />;
+            return <Redirect href={loggedIn ? '/(tabs)' : '/login'} />;
           }
           EOF
 
