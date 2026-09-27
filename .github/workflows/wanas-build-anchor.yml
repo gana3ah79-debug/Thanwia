@@ -1052,6 +1052,36 @@ jobs:
           find app -type f \( -name '_layout.tsx' -o -name 'index.tsx' -o -name 'ai-games.tsx' \) | sort
           grep -R "router\.\(replace\|push\|navigate\)(['\"]/index['\"]" app src --include='*.ts' --include='*.tsx' 2>/dev/null || true
 
+      - name: Neutralize stale avatar_url profile projections
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots=[Path('app'),Path('src')]
+          changed=0
+          hits=[]
+          for root in roots:
+            if not root.exists(): continue
+            for p in root.rglob('*'):
+              if p.suffix not in {'.ts','.tsx','.js','.jsx'}: continue
+              try: s=p.read_text()
+              except: continue
+              old=s
+              def clean(m):
+                nonlocal changed
+                q=m.group(1); body=m.group(2)
+                body=re.sub(r'(^|,)\\s*avatar_url\\s*(?=,|$)', lambda x: x.group(1), body)
+                body=re.sub(r',\\s*,', ',', body)
+                body=body.strip(', ')
+                return '.select('+q+body+q+')'
+              s=re.sub(r"\\.select\\((['\\\"])([^'\\\"]*\\bavatar_url\\b[^'\\\"]*)\\1\\)", clean, s)
+              if s!=old:
+                p.write_text(s); changed+=1; hits.append(str(p))
+          print('avatar_url projection cleanup files:', changed)
+          for x in hits: print(x)
+          PY
       - name: Build Wanas engagement center
         working-directory: app
         shell: bash
