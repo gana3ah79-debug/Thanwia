@@ -478,6 +478,61 @@ jobs:
             notice:{color:'#ffb4bd',textAlign:'center',padding:16}
           });
           EOF
+          # Patch the generated admin screen AFTER its heredoc so these changes are not overwritten.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/admin.tsx')
+          s=p.read_text()
+
+          s=s.replace("const [notice,setNotice]=useState('');", """const [notice,setNotice]=useState('');
+            const [aiQuestions,setAiQuestions]=useState<any[]>([]);
+            const [aiRuns,setAiRuns]=useState<any[]>([]);
+            const [challengeRooms,setChallengeRooms]=useState<any[]>([]);
+            const [supportReplies,setSupportReplies]=useState<Record<string,string>>({});""")
+
+          s=s.replace("supabase.from('admin_settings').select('*'),", """supabase.from('admin_settings').select('*'),
+                supabase.from('ai_generated_questions').select('id,subject,unit,lesson,stem,difficulty,quality_score,status,created_at,model').order('created_at',{ascending:false}).limit(100),
+                supabase.from('ai_generation_runs').select('id,subject,unit,lesson,count_requested,count_generated,status,model,created_at,error_message').order('created_at',{ascending:false}).limit(50),
+                supabase.from('challenge_rooms').select('pin,host_user_id,subject,topic,rounds,status,created_at,updated_at').order('created_at',{ascending:false}).limit(50),""")
+
+          s=s.replace("const [pr,pm,sp,lg,se,ar,as]=results;", "const [pr,pm,sp,lg,se,ar,as,aq,ag,cr]=results;")
+          s=s.replace("setSecurity(se.data||[]);", """setSecurity(se.data||[]);
+              setAiQuestions(aq.data||[]);
+              setAiRuns(ag.data||[]);
+              setChallengeRooms(cr.data||[]);""")
+
+          s=s.replace("const sendMessage=async()=>{", """const replySupport=async(ticket:any)=>{
+              const reply=(supportReplies[ticket.id]||'').trim();
+              if(!reply)return Alert.alert('مطلوب','اكتب الرد أولاً.');
+              const {error}=await supabase.from('support_tickets').update({admin_reply:reply,status:'answered',updated_at:new Date().toISOString()}).eq('id',ticket.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {setSupportReplies(x=>({...x,[ticket.id]:''}));await writeLog('reply_support_ticket',ticket.user_id,{ticket_id:ticket.id});load();}
+            };
+
+            const moderateAIQuestion=async(q:any,status:string)=>{
+              const {error}=await supabase.from('ai_generated_questions').update({status}).eq('id',q.id);
+              if(error)Alert.alert('خطأ',error.message);
+              else {setAiQuestions(x=>x.map(v=>v.id===q.id?{...v,status}:v));await writeLog('moderate_ai_question',undefined,{question_id:q.id,status});}
+            };
+
+            const sendMessage=async()=>{""")
+
+          old="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة التعليقات" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>مركز مراجعة التعليقات</Text><Text style={styles.muted}>تم تجهيز قسم الإدارة لربطه بجدول التعليقات. إذا كان جدول comments موجودًا في Supabase سيتم تفعيله في الخطوة التالية بدون تغيير واجهة الأعضاء.</Text><View style={styles.infoRow}><Ionicons name="information-circle-outline" size={20} color="#77a2ff"/><Text style={styles.muted}>الهدف: إخفاء التعليق، حذف المخالفات، مراجعة البلاغات وترتيب الأحدث أولًا.</Text></View></View></>;"""
+          new="""              if(tab==='comments')return <><Back/><SectionHeader title="إدارة بنك أسئلة AI" icon="chatbubbles-outline"/><View style={styles.card}><Text style={styles.h2}>الأسئلة المولدة فعليًا</Text><Text style={styles.muted}>هذه الأسئلة هي التي تستخدمها اختبارات وألعاب AI. يمكنك اعتماد السؤال أو استبعاده.</Text>{aiQuestions.slice(0,30).map(q=><View style={styles.payment} key={q.id}><Text style={styles.user}>{q.subject} • {q.difficulty||'medium'} • جودة {q.quality_score??'-'}</Text><Text style={styles.muted}>{q.stem}</Text><Text style={styles.log}>{q.status} • {q.created_at?.slice(0,10)}</Text><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>moderateAIQuestion(q,'approved')}><Text style={styles.btnText}>اعتماد</Text></TouchableOpacity><TouchableOpacity style={styles.reject} onPress={()=>moderateAIQuestion(q,'rejected')}><Text style={styles.btnText}>استبعاد</Text></TouchableOpacity></View></View>)}{aiQuestions.length===0&&<Text style={styles.muted}>لا توجد أسئلة AI حتى الآن.</Text>}</View><View style={styles.card}><Text style={styles.h2}>آخر عمليات التوليد</Text>{aiRuns.slice(0,15).map(x=><Text key={x.id} style={styles.log}>{x.subject} • {x.count_generated}/{x.count_requested} • {x.status} • {x.created_at?.slice(0,19).replace('T',' ')}</Text>)}</View></>;"""
+          s=s.replace(old,new)
+
+          old="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة الصور والفيديو" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>مركز الوسائط</Text><Text style={styles.muted}>قسم موحد لمراجعة الصور والفيديوهات والإبلاغات، مع إبقاء ملفات المستخدمين خارج لوحة الإدارة إلا عند الحاجة.</Text><View style={styles.infoRow}><Ionicons name="checkmark-circle-outline" size={20} color="#5fe09b"/><Text style={styles.muted}>تم تجهيز نقطة الإدارة وإجراءات السجل الأمني.</Text></View></View></>;"""
+          new="""              if(tab==='media')return <><Back/><SectionHeader title="إدارة غرف الألعاب" icon="images-outline"/><View style={styles.card}><Text style={styles.h2}>غرف التحديات الحقيقية</Text><Text style={styles.muted}>بيانات غرف الألعاب الموجودة فعليًا في Supabase.</Text>{challengeRooms.slice(0,30).map(x=><View style={styles.payment} key={x.pin}><Text style={styles.user}>{x.subject} • {x.topic||'بدون موضوع'}</Text><Text style={styles.muted}>PIN: {x.pin} • الجولات: {x.rounds} • الحالة: {x.status}</Text><Text style={styles.log}>{x.created_at?.slice(0,19).replace('T',' ')}</Text></View>)}{challengeRooms.length===0&&<Text style={styles.muted}>لا توجد غرف ألعاب حاليًا.</Text>}</View><View style={styles.card}><Text style={styles.h2}>الصور والفيديو</Text><Text style={styles.muted}>فحص قاعدة البيانات أكد عدم وجود جدول وسائط مستقل حاليًا، لذلك لا يوجد زر حذف وهمي. عند إضافة جدول الوسائط سيتم ربطه هنا مباشرة.</Text></View></>;"""
+          s=s.replace(old,new)
+
+          old="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر أو أن جدول الدعم فارغ.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text><Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text>{x.status==='open'&&<TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);writeLog('close_support_ticket',x.user_id);load();}}><Text style={styles.secondaryText}>إغلاق التذكرة</Text></TouchableOpacity>}</View>)}</>;"""
+          new="""              if(tab==='support')return <><Back/><SectionHeader title="الدعم والشكاوى" icon="headset-outline"/>{support.length===0?<Text style={styles.muted}>لا توجد تذاكر.</Text>:support.map(x=><View style={styles.card} key={x.id}><Text style={styles.user}>{x.subject}</Text><Text style={styles.muted}>{x.message}</Text>{x.admin_reply&&<Text style={styles.health}>رد الإدارة: {x.admin_reply}</Text>}<Text style={styles.log}>الحالة: {x.status} • {x.created_at?.slice(0,10)}</Text><TextInput value={supportReplies[x.id]||''} onChangeText={v=>setSupportReplies(r=>({...r,[x.id]:v}))} placeholder="اكتب رد الإدارة" placeholderTextColor="#71809c" style={[styles.input,{height:75,textAlignVertical:'top'}]}/><View style={styles.actionRow}><TouchableOpacity style={styles.approve} onPress={()=>replySupport(x)}><Text style={styles.btnText}>إرسال الرد</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={async()=>{await supabase.from('support_tickets').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',x.id);await writeLog('close_support_ticket',x.user_id,{ticket_id:x.id});load();}}><Text style={styles.secondaryText}>إغلاق</Text></TouchableOpacity></View></View>)}</>;"""
+          s=s.replace(old,new)
+
+          p.write_text(s)
+          print('Admin functional patch applied after admin heredoc')
+          PY
+
           cp app/premium.tsx app/premium-legacy.tsx
           cat > app/premium.tsx <<'EOF'
           import React, { useEffect, useState } from 'react';
