@@ -1,4 +1,5 @@
 name: Wanas APK Builder
+# Control-center/payment/room rebuild trigger
 on:
   push:
     branches:
