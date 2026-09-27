@@ -133,7 +133,11 @@ jobs:
           print('Final avatar_url scrubbed files:',changed)
           PY
           echo "Remaining avatar_url references:"
-          grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null | head -n 100 || true
+          if grep -RIn "avatar_url" app src --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null; then
+            echo "ERROR: avatar_url reference remains in bundled source; refusing to build stale profile schema usage."
+            exit 1
+          fi
+          echo "OK: no avatar_url references remain in app source."
 
       - name: Configure Wanas Supabase environment
         shell: bash
