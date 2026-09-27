@@ -759,7 +759,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          cp ../build/patches/engagement.tsx app/app/engagement.tsx
+          cp ../build/patches/engagement.tsx app/engagement.tsx
           python3 ../build/patches/admin_growth.py
           TAB_DIR="$(find app -type f -name '_layout.tsx' -print0 | xargs -0 grep -l '<Tabs' 2>/dev/null | head -n 1 | xargs -r dirname || true)"
           if [ -n "$TAB_DIR" ]; then
