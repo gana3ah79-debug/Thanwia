@@ -43,7 +43,6 @@ jobs:
           set -e
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           roots=[Path('app'),Path('src')]
           changed=0
@@ -56,22 +55,27 @@ jobs:
                   try: s=p.read_text()
                   except: continue
                   n=s
-
-                  # Remove avatar_url only from PostgREST select string lists.
-                  pat=re.compile(r"(\\.select\\(\\s*['\"])([^'\"]*?)(['\"])",re.S)
-                  def clean(m):
-                      fields=[x.strip() for x in m.group(2).split(',')]
-                      fields=[x for x in fields if x != 'avatar_url']
-                      return m.group(1)+','.join(fields)+m.group(3)
-                  n=pat.sub(clean,n)
-
-                  # Remove avatar_url from common profile projection strings outside select().
-                  n=re.sub(r"(?i)(['\"])(id(?:\\s*,\\s*)?(?:name|email|track|role|xp|phone)(?:\\s*,\\s*)*)?avatar_url\\s*,?([^'\"]*)(['\"])",lambda m:m.group(0),n)
-
+                  pos=0
+                  while True:
+                      j=n.find('.select(',pos)
+                      if j<0: break
+                      qpos=j+len('.select(')
+                      while qpos<len(n) and n[qpos].isspace(): qpos+=1
+                      if qpos>=len(n) or n[qpos] not in "'\"":
+                          pos=j+8; continue
+                      q=n[qpos]; endq=n.find(q,qpos+1)
+                      if endq<0: break
+                      body=n[qpos+1:endq]
+                      if 'avatar_url' in body:
+                          fields=[x.strip() for x in body.split(',') if x.strip()!='avatar_url']
+                          newbody=','.join(fields)
+                          n=n[:qpos+1]+newbody+n[endq:]
+                          pos=qpos+1+len(newbody)+1
+                      else:
+                          pos=endq+1
                   if n!=s:
                       p.write_text(n); changed+=1
                       if 'avatar_url' in s: hits.append(str(p))
-
           print('Removed stale avatar_url select fields from',changed,'files')
           for x in hits[:50]: print('patched:',x)
           PY
