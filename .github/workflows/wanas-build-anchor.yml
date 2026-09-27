@@ -36,10 +36,6 @@ jobs:
           cat build/fixedbin/*.part > /tmp/wanas-source.tar.gz
           tar -tzf /tmp/wanas-source.tar.gz >/dev/null
           tar -xzf /tmp/wanas-source.tar.gz -C app
-          echo "===== ROUTER FILES ====="
-          find app/app -maxdepth 3 -type f | sort | head -200 || true
-          echo "===== PACKAGE ====="
-          cat app/package.json | head -120 || true
       - name: Fix dynamic gift image imports
         shell: bash
         run: |
@@ -113,37 +109,7 @@ jobs:
           });
           EOF
 
-          cat > app/app/index.tsx <<'EOF'
-          import React, { useEffect, useState } from 'react';
-          import { ActivityIndicator, View } from 'react-native';
-          import { Redirect } from 'expo-router';
-          import { supabase } from '../src/lib/wanasSupabase';
 
-          export default function IndexDeepLink() {
-            const [ready, setReady] = useState(false);
-            const [loggedIn, setLoggedIn] = useState(false);
-
-            useEffect(() => {
-              let alive = true;
-              supabase.auth.getSession().then(({ data }) => {
-                if (!alive) return;
-                setLoggedIn(!!data.session);
-                setReady(true);
-              }).catch(() => {
-                if (alive) setReady(true);
-              });
-              return () => { alive = false; };
-            }, []);
-
-            if (!ready) {
-              return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b1020' }}>
-                <ActivityIndicator size="large" color="#4f7cff" />
-              </View>;
-            }
-
-            return <Redirect href={loggedIn ? '/(tabs)' : '/login'} />;
-          }
-          EOF
 
           cp app/admin.tsx app/admin-legacy.tsx
           cat > app/admin.tsx <<'EOF'
