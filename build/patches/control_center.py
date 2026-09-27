@@ -99,3 +99,5 @@ write_room_tools()
 patch_engagement()
 patch_admin()
 print('Wanas control center patch applied')
+
+# Wanas control center v2: payment, room, feature and moderation controls are applied by the build workflow.
