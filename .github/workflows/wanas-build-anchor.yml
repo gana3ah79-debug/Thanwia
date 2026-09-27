@@ -91,6 +91,269 @@ jobs:
               grep -R '1\.9\.24' "$root" --include='*.gradle' --include='*.gradle.kts' --include='gradle.properties' --include='libs.versions.toml' 2>/dev/null || true
             fi
           done
+
+      - name: Add Wanas Supabase and privacy features
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          mkdir -p app/index src/lib
+          cat > src/lib/wanasSupabase.ts <<'EOF'
+          import { createClient } from '@supabase/supabase-js';
+
+          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+
+          export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+          });
+          EOF
+
+          cat > app/index/index.tsx <<'EOF'
+          import { Redirect } from 'expo-router';
+          export default function IndexDeepLink() {
+            return <Redirect href="/" />;
+          }
+          EOF
+
+          cp app/admin.tsx app/admin-legacy.tsx
+          cat > app/admin.tsx <<'EOF'
+          import React, { useCallback, useEffect, useState } from 'react';
+          import { Alert, FlatList, RefreshControl, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+          import { router } from 'expo-router';
+          import { supabase } from '../src/lib/wanasSupabase';
+
+          type Profile = {
+            id: string; name: string; email?: string | null; phone?: string | null; role: string;
+            is_paid: boolean; incognito_enabled?: boolean; incognito_until?: string | null;
+            last_seen?: string | null; created_at?: string | null;
+          };
+
+          type Payment = {
+            id: number; user_id: string; name?: string | null; email?: string | null; amount: number;
+            transaction_id: string; plan: string; status: string; created_at: string;
+          };
+
+          export default function AdminScreen() {
+            const [profiles, setProfiles] = useState<Profile[]>([]);
+            const [payments, setPayments] = useState<Payment[]>([]);
+            const [loading, setLoading] = useState(true);
+            const [serviceEnabled, setServiceEnabled] = useState(true);
+            const [price, setPrice] = useState('0');
+            const [days, setDays] = useState('30');
+
+            const load = useCallback(async () => {
+              setLoading(true);
+              const [{ data: ps, error: pe }, { data: pms, error: me }, { data: setting }] = await Promise.all([
+                supabase.from('profiles').select('id,name,email,phone,role,is_paid,incognito_enabled,incognito_until,last_seen,created_at').order('created_at', { ascending: false }),
+                supabase.from('payment_submissions').select('id,user_id,name,email,amount,transaction_id,plan,status,created_at').eq('plan', 'incognito').order('created_at', { ascending: false }).limit(50),
+                supabase.from('app_settings').select('value').eq('key', 'incognito_service').maybeSingle(),
+              ]);
+              if (pe) Alert.alert('خطأ', pe.message);
+              if (me) Alert.alert('خطأ', me.message);
+              setProfiles((ps || []) as Profile[]);
+              setPayments((pms || []) as Payment[]);
+              const v = setting?.value as any;
+              if (v) {
+                setServiceEnabled(v.enabled !== false);
+                setPrice(String(v.price ?? 0));
+                setDays(String(v.days ?? 30));
+              }
+              setLoading(false);
+            }, []);
+
+            useEffect(() => { load(); }, [load]);
+
+            const saveService = async () => {
+              const p = Math.max(0, Number(price) || 0);
+              const d = Math.max(1, Number(days) || 30);
+              const { error } = await supabase.from('app_settings').upsert({
+                key: 'incognito_service',
+                value: { enabled: serviceEnabled, price: p, days: d },
+                updated_at: new Date().toISOString(),
+              });
+              if (error) Alert.alert('خطأ', error.message);
+              else Alert.alert('تم', 'تم حفظ إعدادات وضع التخفي');
+            };
+
+            const toggleIncognito = async (user: Profile, value: boolean) => {
+              const until = value ? new Date(Date.now() + 30 * 86400000).toISOString() : null;
+              const { error } = await supabase.from('profiles').update({
+                incognito_enabled: value, incognito_until: until,
+              }).eq('id', user.id);
+              if (error) Alert.alert('خطأ', error.message);
+              else setProfiles(x => x.map(p => p.id === user.id ? { ...p, incognito_enabled: value, incognito_until: until } : p));
+            };
+
+            const approve = async (payment: Payment) => {
+              const { error } = await supabase.from('payment_submissions').update({
+                status: 'approved', reviewed_at: new Date().toISOString(),
+              }).eq('id', payment.id);
+              if (error) Alert.alert('خطأ', error.message);
+              else { Alert.alert('تم', 'تم اعتماد طلب التخفي، وسيتم تفعيله تلقائياً'); load(); }
+            };
+
+            const reject = async (payment: Payment) => {
+              const { error } = await supabase.from('payment_submissions').update({
+                status: 'rejected', reviewed_at: new Date().toISOString(),
+              }).eq('id', payment.id);
+              if (error) Alert.alert('خطأ', error.message); else load();
+            };
+
+            return (
+              <SafeAreaView style={styles.root}>
+                <FlatList
+                  data={profiles}
+                  keyExtractor={x => x.id}
+                  refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+                  ListHeaderComponent={
+                    <View>
+                      <Text style={styles.title}>لوحة إدارة Wanas</Text>
+                      <Text style={styles.sub}>المستخدم المخفي يظهر هنا دائماً، وبجواره علامة «متخفى».</Text>
+
+                      <View style={styles.card}>
+                        <Text style={styles.h2}>خدمة وضع التخفي المدفوعة</Text>
+                        <View style={styles.row}><Text style={styles.label}>الخدمة متاحة</Text><Switch value={serviceEnabled} onValueChange={setServiceEnabled}/></View>
+                        <Text style={styles.label}>السعر</Text>
+                        <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="numeric" placeholder="0"/>
+                        <Text style={styles.label}>مدة الاشتراك بالأيام</Text>
+                        <TextInput style={styles.input} value={days} onChangeText={setDays} keyboardType="numeric" />
+                        <TouchableOpacity style={styles.primary} onPress={saveService}><Text style={styles.primaryText}>حفظ إعدادات الخدمة</Text></TouchableOpacity>
+                      </View>
+
+                      <View style={styles.card}>
+                        <Text style={styles.h2}>طلبات التخفي ({payments.filter(x => x.status === 'pending').length})</Text>
+                        {payments.length === 0 ? <Text style={styles.muted}>لا توجد طلبات حالياً</Text> : payments.map(p => (
+                          <View key={p.id} style={styles.payment}>
+                            <Text style={styles.user}>{p.name || p.email || p.user_id}</Text>
+                            <Text style={styles.muted}>المبلغ: {p.amount} • رقم العملية: {p.transaction_id || '—'}</Text>
+                            <Text style={styles.muted}>الحالة: {p.status}</Text>
+                            {p.status === 'pending' && <View style={styles.row}>
+                              <TouchableOpacity style={styles.approve} onPress={() => approve(p)}><Text style={styles.btnText}>اعتماد</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.reject} onPress={() => reject(p)}><Text style={styles.btnText}>رفض</Text></TouchableOpacity>
+                            </View>}
+                          </View>
+                        ))}
+                      </View>
+
+                      <View style={styles.card}>
+                        <Text style={styles.h2}>المستخدمون ({profiles.length})</Text>
+                        <TouchableOpacity style={styles.secondary} onPress={() => router.push('/admin-legacy')}><Text>فتح لوحة الإدارة الأصلية</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  }
+                  renderItem={({item}) => (
+                    <View style={styles.userCard}>
+                      <View style={{flex:1}}>
+                        <View style={styles.row}>
+                          <Text style={styles.user}>{item.name || 'بدون اسم'}</Text>
+                          {item.incognito_enabled && <Text style={styles.badge}>متخفى</Text>}
+                          {item.role === 'admin' && <Text style={styles.adminBadge}>ADMIN</Text>}
+                        </View>
+                        <Text style={styles.muted}>{item.email || item.phone || item.id}</Text>
+                        <Text style={styles.muted}>تسجيل: {item.created_at ? new Date(item.created_at).toLocaleDateString('ar-EG') : '—'}</Text>
+                      </View>
+                      <Switch value={!!item.incognito_enabled} onValueChange={v => toggleIncognito(item, v)} />
+                    </View>
+                  )}
+                />
+              </SafeAreaView>
+            );
+          }
+
+          const styles = StyleSheet.create({
+            root:{flex:1,backgroundColor:'#0b1020'},
+            title:{fontSize:26,fontWeight:'800',color:'#fff',textAlign:'right',padding:18,paddingBottom:6},
+            sub:{color:'#aeb8d0',textAlign:'right',paddingHorizontal:18,paddingBottom:10},
+            card:{backgroundColor:'#141b2d',marginHorizontal:12,marginVertical:8,borderRadius:16,padding:15},
+            h2:{fontSize:19,fontWeight:'800',color:'#fff',textAlign:'right',marginBottom:12},
+            label:{color:'#cbd4ea',textAlign:'right',marginTop:8,marginBottom:5},
+            input:{backgroundColor:'#0d1425',color:'#fff',borderRadius:10,padding:11,textAlign:'right'},
+            row:{flexDirection:'row',alignItems:'center',gap:8,marginTop:8},
+            primary:{backgroundColor:'#4f7cff',padding:13,borderRadius:11,alignItems:'center',marginTop:12},
+            primaryText:{color:'#fff',fontWeight:'800'},
+            secondary:{backgroundColor:'#e8edf8',padding:12,borderRadius:10,alignItems:'center'},
+            userCard:{flexDirection:'row',alignItems:'center',backgroundColor:'#141b2d',marginHorizontal:12,marginVertical:5,borderRadius:14,padding:13},
+            user:{color:'#fff',fontSize:16,fontWeight:'700'},
+            muted:{color:'#9ba7c0',fontSize:12,textAlign:'right',marginTop:3},
+            badge:{backgroundColor:'#7c3aed',color:'#fff',paddingHorizontal:8,paddingVertical:3,borderRadius:8,fontSize:11,fontWeight:'800'},
+            adminBadge:{backgroundColor:'#1d9bf0',color:'#fff',paddingHorizontal:7,paddingVertical:3,borderRadius:8,fontSize:10,fontWeight:'800'},
+            payment:{borderTopWidth:1,borderTopColor:'#29334d',paddingTop:10,marginTop:8},
+            approve:{backgroundColor:'#159447',padding:9,borderRadius:9},
+            reject:{backgroundColor:'#b52d3b',padding:9,borderRadius:9},
+            btnText:{color:'#fff',fontWeight:'800'}
+          });
+          EOF
+
+          cp app/premium.tsx app/premium-legacy.tsx
+          cat > app/premium.tsx <<'EOF'
+          import React, { useEffect, useState } from 'react';
+          import { Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+          import { router } from 'expo-router';
+          import { supabase } from '../src/lib/wanasSupabase';
+
+          export default function PremiumScreen() {
+            const [price, setPrice] = useState(0);
+            const [days, setDays] = useState(30);
+            const [enabled, setEnabled] = useState(true);
+            const [transaction, setTransaction] = useState('');
+            const [status, setStatus] = useState<string | null>(null);
+
+            useEffect(() => {
+              (async () => {
+                const { data } = await supabase.from('app_settings').select('value').eq('key','incognito_service').maybeSingle();
+                const v = data?.value as any;
+                if (v) { setEnabled(v.enabled !== false); setPrice(Number(v.price || 0)); setDays(Number(v.days || 30)); }
+                const { data: session } = await supabase.auth.getSession();
+                if (session.session?.user) {
+                  const { data: p } = await supabase.from('payment_submissions').select('status').eq('user_id',session.session.user.id).eq('plan','incognito').order('created_at',{ascending:false}).limit(1).maybeSingle();
+                  setStatus(p?.status || null);
+                }
+              })();
+            }, []);
+
+            const submit = async () => {
+              if (!transaction.trim()) return Alert.alert('مطلوب','اكتب رقم عملية التحويل بعد الدفع.');
+              const { data: session } = await supabase.auth.getSession();
+              const user = session.session?.user;
+              if (!user) return Alert.alert('تسجيل الدخول','سجل الدخول أولاً.');
+              const { data: profile } = await supabase.from('profiles').select('name,email,phone').eq('id',user.id).maybeSingle();
+              const { error } = await supabase.from('payment_submissions').insert({
+                user_id:user.id, name:profile?.name || user.user_metadata?.name || 'عضو',
+                email:profile?.email || user.email, phone:profile?.phone || null,
+                transaction_id:transaction.trim(), plan:'incognito', amount:price, status:'pending'
+              });
+              if (error) Alert.alert('خطأ',error.message);
+              else { setStatus('pending'); Alert.alert('تم','تم إرسال طلب التفعيل للإدارة.'); }
+            };
+
+            return <SafeAreaView style={styles.root}><View style={styles.box}>
+              <Text style={styles.title}>🕶️ وضع التخفي</Text>
+              <Text style={styles.desc}>عند التفعيل لا يظهر حسابك في قوائم الأعضاء للمستخدمين، بينما يظل ظاهرًا للإدارة ومكتوبًا بجواره «متخفى».</Text>
+              {!enabled ? <Text style={styles.off}>الخدمة متوقفة حاليًا من الإدارة.</Text> : <>
+                <Text style={styles.price}>{price > 0 ? price + ' جنيه / ' + days + ' يوم' : 'السعر تحدده الإدارة'}</Text>
+                <TextInput value={transaction} onChangeText={setTransaction} placeholder="رقم عملية التحويل" placeholderTextColor="#77809a" style={styles.input}/>
+                <TouchableOpacity style={styles.button} onPress={submit} disabled={status==='pending'}><Text style={styles.buttonText}>{status==='pending'?'الطلب قيد المراجعة':'إرسال طلب التفعيل'}</Text></TouchableOpacity>
+                {status && <Text style={styles.status}>آخر طلب: {status}</Text>}
+              </>}
+              <TouchableOpacity style={styles.link} onPress={() => router.push('/premium-legacy')}><Text style={styles.linkText}>الميزات المدفوعة الحالية</Text></TouchableOpacity>
+            </View></SafeAreaView>
+          }
+          const styles=StyleSheet.create({
+            root:{flex:1,backgroundColor:'#0b1020',justifyContent:'center',padding:18},
+            box:{backgroundColor:'#141b2d',borderRadius:20,padding:20},
+            title:{fontSize:27,fontWeight:'900',color:'#fff',textAlign:'right',marginBottom:12},
+            desc:{color:'#c5cee2',fontSize:15,lineHeight:24,textAlign:'right'},
+            price:{color:'#72a1ff',fontSize:19,fontWeight:'800',textAlign:'right',marginVertical:18},
+            input:{backgroundColor:'#0d1425',color:'#fff',padding:13,borderRadius:11,textAlign:'right'},
+            button:{backgroundColor:'#4f7cff',padding:14,borderRadius:11,alignItems:'center',marginTop:12},
+            buttonText:{color:'#fff',fontWeight:'900'},
+            status:{color:'#a9f0bd',textAlign:'right',marginTop:10},
+            off:{color:'#ff9da8',textAlign:'right',marginVertical:15},
+            link:{padding:13,alignItems:'center',marginTop:12},
+            linkText:{color:'#9fb8ff'}
+          });
+          EOF
       - name: Prebuild Android
         working-directory: app
         env:
