@@ -1059,6 +1059,33 @@ jobs:
           grep -RInE "\.select\([[:space:]]*['\"\x60][^'\"\x60]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
           echo '=== Profile queries remaining ==='
           grep -RInE "from\(['\"]profiles['\"]\)" app src --include='*.ts' --include='*.tsx' 2>/dev/null | head -n 100 || true
+      - name: Hard remove avatar_url field from runtime query strings
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          changed=0
+          for root in (Path('app'), Path('src')):
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
+                  try: old=p.read_text()
+                  except: continue
+                  def clean(m):
+                      q,body=m.group(1),m.group(2)
+                      body=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\s*,?\s*','',body)
+                      body=re.sub(r',\s*,+',',',body).strip(' ,')
+                      return q + (body or 'id') + q
+                  new=re.sub(r"(['\"`])([^'\"`]*avatar_url[^'\"`]*)\1",clean,old)
+                  if new!=old: p.write_text(new); changed+=1
+          print('Hard avatar_url sanitizer changed',changed,'files')
+          PY
+          echo '=== avatar_url references after hard sanitizer ==='
+          grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
+
       - name: Prebuild Android
         working-directory: app
         env:
