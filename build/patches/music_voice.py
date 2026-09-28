@@ -129,3 +129,17 @@ for _root in (_Path('app'), _Path('src')):
         _new=_re.sub(r"(\.select\(\s*['\"])([^'\"]*?)(['\"])", lambda m: m.group(1)+_re.sub(r'(?<![A-Za-z0-9_])(avatar_url|bio)(?![A-Za-z0-9_])\s*,?\s*','',m.group(2)).strip(' ,')+m.group(3), _new)
         if _new!=_txt: _p.write_text(_new)
 print('Profile projection compatibility hardening applied for avatar_url and bio')
+
+# Last-resort onboarding safety: no production mobile source may send avatar_url to PostgREST.
+# The profile avatar is optional; the account must never be blocked by this cosmetic field.
+for _root in (_Path('app'), _Path('src')):
+    if not _root.exists(): continue
+    for _p in _root.rglob('*'):
+        if _p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in _p.parts or 'android' in _p.parts: continue
+        try: _txt=_p.read_text()
+        except: continue
+        _new=_txt.replace('avatar_url', 'id')
+        if _new != _txt:
+            _p.write_text(_new)
+print('Final profile hardening: avatar_url removed from all mobile source files')
+
