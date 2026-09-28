@@ -1215,7 +1215,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('admin.tsx')
+          p=Path('app/admin.tsx')
           s=p.read_text()
           new="""const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;
           setPaymentMethods(pmt.data||[]);
@@ -1231,7 +1231,7 @@ jobs:
           p.write_text(s)
           print("admin runtime mapping repaired",n)
           PY
-          if grep -n "const _pc=results.slice(10)" admin.tsx; then
+          if grep -n "const _pc=results.slice(10)" app/admin.tsx; then
             echo "ERROR: stale admin result mapping remains"
             exit 1
           fi
