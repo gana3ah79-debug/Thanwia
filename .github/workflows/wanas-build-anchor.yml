@@ -1023,7 +1023,10 @@ jobs:
           import re
           roots=[Path('app'),Path('src')]
           changed=0
-          pat=re.compile(r"(\\.select\\(\\s*)(['\"\\x60])(.*?)(\\2)", re.S)
+          hits=[]
+          # Remove avatar_url only from literal Supabase select projections.
+          # This runs AFTER all feature patches, so no later patch can reintroduce the failing projection.
+          pat=re.compile(r"""\.select\(\s*(['"\x60])([\s\S]*?)\1""")
           for root in roots:
               if not root.exists(): continue
               for p in root.rglob('*'):
@@ -1032,23 +1035,30 @@ jobs:
                   try: old=p.read_text()
                   except: continue
                   def fix(m):
-                      body=m.group(3)
-                      if 'avatar_url' not in body: return m.group(0)
-                      body=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\\s*,?\\s*','',body)
-                      body=re.sub(r',\\s*,',',',body).strip(' ,')
-                      if not body: body='id'
-                      return m.group(1)+m.group(2)+body+m.group(4)
+                      body=m.group(2)
+                      if 'avatar_url' not in body:
+                          return m.group(0)
+                      newbody=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])', '', body)
+                      newbody=re.sub(r',\s*,+', ',', newbody)
+                      newbody=re.sub(r'^\s*,|,\s*$', '', newbody)
+                      if not newbody.strip(): newbody='id'
+                      return m.group(0)[:m.start(2)-m.start(0)] + newbody + m.group(0)[m.end(2)-m.start(0):]
                   new=pat.sub(fix,old)
                   if new!=old:
                       p.write_text(new); changed+=1
-          print('Final avatar_url select sanitizer changed',changed,'files')
+                  if 'avatar_url' in new:
+                      for i,line in enumerate(new.splitlines(),1):
+                          if 'avatar_url' in line and '.select' in line:
+                              hits.append(f'{p}:{i}:{line.strip()}')
+          print('Final avatar_url projection sanitizer changed',changed,'files')
+          if hits:
+              print('WARNING: avatar_url still appears near select():')
+              print('\n'.join(hits[:100]))
           PY
-          echo 'Remaining literal avatar_url in Supabase select projections:'
-          grep -RInE "\\.select\\([^)]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
-          if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 22/' android/app/build.gradle || true
-          fi
-
+          echo '=== Remaining avatar_url SELECT projections ==='
+          grep -RInE "\.select\([[:space:]]*['\"\x60][^'\"\x60]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
+          echo '=== Profile queries remaining ==='
+          grep -RInE "from\(['\"]profiles['\"]\)" app src --include='*.ts' --include='*.tsx' 2>/dev/null | head -n 100 || true
       - name: Prebuild Android
         working-directory: app
         env:
