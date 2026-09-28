@@ -1132,11 +1132,10 @@ jobs:
           set -e
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('src/lib/wanasSupabase.ts')
           s=p.read_text()
-          start=s.find('const wanasFetch')
-          end=s.find('\n\n          export const supabase', start)
-          block=r'''const wanasFetch: typeof fetch = async (input:any, init?:any) => {
+          block=r"""const wanasFetch: typeof fetch = async (input:any, init?:any) => {
             let url = '';
             try { url = typeof input === 'string' ? input : String(input?.url || ''); } catch {}
             try {
@@ -1168,15 +1167,24 @@ jobs:
             } catch {}
             if (url) return fetch(url, {...(init||{}), body});
             return fetch(input, init);
-          };'''
-          if start>=0 and end>start:
-              s=s[:start]+block+s[end:]
+          };"""
+          # Replace any existing wrapper, regardless of indentation/previous version.
+          pattern=re.compile(r'const wanasFetch\s*:\s*typeof fetch\s*=\s*async\s*\(.*?\n\s*\};\s*(?=export const supabase)',re.S)
+          if pattern.search(s):
+              s=pattern.sub(block+'\n\n          ',s,count=1)
           else:
-              raise SystemExit('wanasFetch block not found')
+              anchor='export const supabase = createClient'
+              i=s.find(anchor)
+              if i<0: raise SystemExit('supabase client anchor not found')
+              s=s[:i]+block+'\n\n          '+s[i:]
+          # Guarantee the client actually uses the wrapper.
+          s=re.sub(r'global:\s*\{\s*fetch:\s*[^}]+\}', "global: { fetch: wanasFetch }", s, count=1)
+          if 'global: { fetch: wanasFetch }' not in s:
+              s=s.replace("auth: {", "global: { fetch: wanasFetch },\n            auth: {", 1)
           p.write_text(s)
-          print('Installed final network-level avatar_url blocker')
+          print('Installed robust avatar_url network blocker and verified client wiring')
           PY
-          grep -n -E 'const wanasFetch|avatar_url|global: \{ fetch' src/lib/wanasSupabase.ts | head -n 30
+          grep -n -E 'wanasFetch|global: \{ fetch' src/lib/wanasSupabase.ts | head -n 20
 
       - name: Final repair of friends Avatar expressions
         working-directory: app
