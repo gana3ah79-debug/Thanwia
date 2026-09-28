@@ -1056,6 +1056,14 @@ jobs:
           fi
           echo "Wanas engagement and admin growth patches applied"
 
+      - name: Apply Wanas V18 room UI and mic control center
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v18_rooms_ui.py
+          echo "Wanas V18 room UI, room discovery filters, mic queue and host control center applied"
+
       - name: Repair malformed friends Avatar prop
         working-directory: app
         shell: bash
