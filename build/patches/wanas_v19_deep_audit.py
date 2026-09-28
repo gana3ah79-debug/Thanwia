@@ -1,6 +1,6 @@
 from pathlib import Path
 import re,sys
-ROOT=Path('app')
+ROOT=Path('.')
 
 room=ROOT/'rooms/[id].tsx'
 if room.exists():
@@ -88,7 +88,7 @@ if api.exists():
     s=s.replace(needle,repl)
     api.write_text(s)
 
-audit=ROOT.parent/'build'/'wanas_deep_audit.py'
+audit=Path('../build/wanas_deep_audit.py')
 audit.parent.mkdir(parents=True,exist_ok=True)
 audit.write_text(r'''from pathlib import Path
 import re,sys
@@ -97,7 +97,7 @@ errors=[]
 for p in files:
     s=p.read_text(errors='ignore')
     if 'loadData();' in s: errors.append(f'{p}: unresolved loadData()')
-room=Path('app/rooms/[id].tsx')
+room=Path('rooms/[id].tsx')
 if room.exists():
     s=room.read_text()
     for token in ['moderateRoom','hand_raised','RoomControlCenter']:
