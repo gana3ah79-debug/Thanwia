@@ -1125,6 +1125,59 @@ jobs:
           grep -RInE "\.select\([[:space:]]*['\"\x60][^'\"\x60]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
           echo '=== Profile queries remaining ==='
           grep -RInE "from\(['\"]profiles['\"]\)" app src --include='*.ts' --include='*.tsx' 2>/dev/null | head -n 100 || true
+      - name: Final hard block for avatar_url at network layer
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/lib/wanasSupabase.ts')
+          s=p.read_text()
+          start=s.find('const wanasFetch')
+          end=s.find('\n\n          export const supabase', start)
+          block=r'''const wanasFetch: typeof fetch = async (input:any, init?:any) => {
+            let url = '';
+            try { url = typeof input === 'string' ? input : String(input?.url || ''); } catch {}
+            try {
+              if (url.includes('/rest/v1/')) {
+                const u = new URL(url);
+                const sel = u.searchParams.get('select');
+                if (sel && /(^|,)avatar_url(,|$)/.test(sel)) {
+                  const cleaned = sel.split(',').map((x:string)=>x.trim()).filter((x:string)=>x !== 'avatar_url').join(',');
+                  u.searchParams.set('select', cleaned || 'id');
+                  url = u.toString();
+                }
+              }
+            } catch {}
+            let body = init?.body;
+            try {
+              if (typeof body === 'string' && body.includes('avatar_url')) {
+                const obj = JSON.parse(body);
+                const strip=(v:any):any=>{
+                  if(Array.isArray(v)) return v.map(strip);
+                  if(v && typeof v==='object'){
+                    const o:any={};
+                    for(const [k,val] of Object.entries(v)) if(k !== 'avatar_url') o[k]=strip(val);
+                    return o;
+                  }
+                  return v;
+                };
+                body=JSON.stringify(strip(obj));
+              }
+            } catch {}
+            if (url) return fetch(url, {...(init||{}), body});
+            return fetch(input, init);
+          };'''
+          if start>=0 and end>start:
+              s=s[:start]+block+s[end:]
+          else:
+              raise SystemExit('wanasFetch block not found')
+          p.write_text(s)
+          print('Installed final network-level avatar_url blocker')
+          PY
+          grep -n -E 'const wanasFetch|avatar_url|global: \{ fetch' src/lib/wanasSupabase.ts | head -n 30
+
       - name: Final repair of friends Avatar expressions
         working-directory: app
         shell: bash
