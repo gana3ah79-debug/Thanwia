@@ -75,6 +75,31 @@ jobs:
           echo "Remaining Supabase select() avatar_url references:"
           grep -RInE "\.select\([^)]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
 
+      - name: Hard-disable avatar_url dependency in mobile source
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          touched=0
+          for root in [Path('app'),Path('src')]:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts: continue
+                  try: s=p.read_text()
+                  except: continue
+                  n=s
+                  # Remove avatar_url from object payloads (insert/update/upsert) so PostgREST never receives it.
+                  n=re.sub(r'([,{\\s])avatar_url\\s*:\\s*[^,}\\n]+,?', r'\\1', n)
+                  # Replace remaining property reads with a safe existing profile field.
+                  n=n.replace('.avatar_url', '.id')
+                  if n!=s:
+                      p.write_text(n); touched+=1
+          print('Removed avatar_url runtime dependency from',touched,'source files')
+          PY
+
       - name: Verify Wanas profile schema
         working-directory: app
         shell: bash
