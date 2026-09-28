@@ -1207,6 +1207,37 @@ jobs:
           fi
           echo "PASS: no avatar_url reference remains in final mobile source"
 
+      - name: Final admin runtime mapping repair
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('admin.tsx')
+          s=p.read_text()
+          new="""const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;
+          setPaymentMethods(pmt.data||[]);
+          setPaymentOrders(orders.data||[]);
+          setRoomSettings(rooms.data||[]);
+          setFeatureFlags(flags.data||[]);"""
+          pat=r"const \[pr,pm,sp,lg,se,ar,as,[^\]]+\]=results;\s*const _pc=results\.slice\(10\);[^\n]*"
+          s,n=re.subn(pat,new,s,count=1)
+          if n==0 and "const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;" not in s:
+              anchor="    setProfiles((pr.data||[]) as Profile[]);"
+              if anchor in s: s=s.replace(anchor,new+"\n"+anchor,1)
+          s=s.replace("loadData();","load();")
+          p.write_text(s)
+          print("admin runtime mapping repaired",n)
+          PY
+          if grep -n "const _pc=results.slice(10)" admin.tsx; then
+            echo "ERROR: stale admin result mapping remains"
+            exit 1
+          fi
+          grep -n "const \[pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr\]=results" admin.tsx
+          echo "Final admin runtime mapping PASS"
+
       - name: Package complete Wanas project source
         shell: bash
         run: |
