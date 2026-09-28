@@ -1206,6 +1206,39 @@ jobs:
           PY
           grep -n -C 2 -E 'Avatar|\?\.\}' 'app/(tabs)/friends.tsx' || true
 
+      - name: Final Thanwia profile compatibility repair
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots=[Path('app'),Path('src')]
+          changed=0
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
+                      continue
+                  try: s=p.read_text()
+                  except: continue
+                  # The production Thanwia profile screen must not depend on the
+                  # stale avatar_url PostgREST projection. Use the compatibility
+                  # column avatar instead; the DB migration creates it and copies
+                  # existing avatar_url values.
+                  n=s.replace('avatar_url','avatar')
+                  if n!=s:
+                      p.write_text(n); changed+=1
+          print('Thanwia profile compatibility: replaced avatar_url references in',changed,'source files')
+          PY
+          echo '=== Remaining avatar_url references in app source ==='
+          if grep -RIn 'avatar_url' app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null; then
+            echo 'ERROR: avatar_url reference remains in bundled source'
+            exit 1
+          fi
+          echo 'Thanwia profile compatibility verified: no avatar_url source reference remains'
+
       - name: Prebuild Android
         working-directory: app
         env:
