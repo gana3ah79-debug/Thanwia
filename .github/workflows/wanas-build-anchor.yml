@@ -1177,6 +1177,25 @@ jobs:
           fi
           echo 'Thanwia profile compatibility verified: no avatar_url source reference remains'
 
+      - name: Package complete Wanas project source
+        shell: bash
+        run: |
+          set -e
+          rm -rf /tmp/wanas-project-package
+          mkdir -p /tmp/wanas-project-package
+          cp -a app /tmp/wanas-project-package/Wanas-Project
+          rm -rf /tmp/wanas-project-package/Wanas-Project/node_modules
+          rm -rf /tmp/wanas-project-package/Wanas-Project/android
+          rm -rf /tmp/wanas-project-package/Wanas-Project/.expo
+          tar -czf /tmp/Wanas-Project-Source.tar.gz -C /tmp/wanas-project-package Wanas-Project
+          ls -lh /tmp/Wanas-Project-Source.tar.gz
+      - name: Upload complete Wanas project source
+        uses: actions/upload-artifact@v4
+        with:
+          name: wanas-project-source
+          path: /tmp/Wanas-Project-Source.tar.gz
+          if-no-files-found: error
+
       - name: Prebuild Android
         working-directory: app
         env:
