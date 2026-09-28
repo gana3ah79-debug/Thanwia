@@ -1056,6 +1056,15 @@ jobs:
           fi
           echo "Wanas engagement and admin growth patches applied"
 
+      - name: Apply Wanas V19 deep audit fixes
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v19_deep_audit.py
+          python3 ../build/wanas_deep_audit.py
+          echo "Wanas V19 deep audit fixes applied and static gates passed"
+
       - name: Apply Wanas V18 room UI and mic control center
         working-directory: app
         shell: bash
