@@ -1160,6 +1160,25 @@ jobs:
             echo 'ERROR: avatar_url remains in runtime source'; exit 1
           fi
           echo 'avatar_url runtime references: none'
+      - name: Final repair of friends Avatar expressions
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/(tabs)/friends.tsx')
+          if p.exists():
+              s=p.read_text()
+              # Repair sanitizer damage such as r.sender?.} while keeping valid optional chaining.
+              s=re.sub(r'([A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)?)\?\.\}', r'\1?.avatar}', s)
+              s=s.replace('sender?.}', 'sender?.avatar}')
+              p.write_text(s)
+              print('friends Avatar syntax repaired')
+          PY
+          grep -n -C 2 -E 'Avatar|\?\.\}' 'app/(tabs)/friends.tsx' || true
+
       - name: Prebuild Android
         working-directory: app
         env:
