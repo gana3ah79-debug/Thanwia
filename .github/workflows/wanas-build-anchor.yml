@@ -1218,32 +1218,16 @@ jobs:
           from pathlib import Path
           p=Path('app/admin.tsx')
           s=p.read_text()
-          lines=s.splitlines()
-          out=[]
-          replaced=False
-          i=0
-          while i < len(lines):
-              if 'const _pc=results.slice(10)' in lines[i]:
-                  if out and 'const [pr,pm,sp,lg,se,ar,as' in out[-1]:
-                      out[-1]="    const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;"
-                  out.append("    setPaymentMethods(pmt.data||[]);")
-                  out.append("    setPaymentOrders(orders.data||[]);")
-                  out.append("    setRoomSettings(rooms.data||[]);")
-                  out.append("    setFeatureFlags(flags.data||[]);")
-                  replaced=True
-                  i+=1
-                  continue
-              out.append(lines[i])
-              i+=1
-          s="\n".join(out)+"\n"
           s=s.replace("loadData();","load();")
           p.write_text(s)
-          print("admin mapping replaced:",replaced)
-          if not replaced:
-              raise SystemExit("stale admin mapping was not found")
+          print("admin runtime mapping gate inspected")
           PY
-          ! grep -q "const _pc=results.slice(10)" app/admin.tsx
-          grep -q "setPaymentMethods(pmt.data||[])" app/admin.tsx
+          if grep -q "const _pc=results.slice(10)" app/admin.tsx; then
+            echo "ERROR: stale admin result mapping remains"
+            exit 1
+          fi
+          grep -q "acs.data" app/admin.tsx
+          grep -q "grants.data" app/admin.tsx
           echo "Final admin runtime mapping PASS"
 
       - name: Package complete Wanas project source
