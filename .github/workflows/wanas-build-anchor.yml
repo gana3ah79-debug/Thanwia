@@ -1013,6 +1013,30 @@ jobs:
           fi
           echo "Wanas engagement and admin growth patches applied"
 
+      - name: Repair malformed friends Avatar prop
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/(tabs)/friends.tsx')
+          if p.exists():
+              s=p.read_text()
+              bad="uri={r.sender?.}"
+              good="uri={r.sender?.avatar}"
+              if bad in s:
+                  s=s.replace(bad,good)
+                  p.write_text(s)
+                  print('Repaired malformed friends Avatar uri prop')
+              else:
+                  print('No malformed friends Avatar uri prop found')
+          else:
+              print('friends.tsx not present; nothing to repair')
+          PY
+          echo '=== friends Avatar lines ==='
+          grep -n "<Avatar" 'app/(tabs)/friends.tsx' 2>/dev/null || true
+
       - name: Final Wanas profile query sanitizer
         working-directory: app
         shell: bash
