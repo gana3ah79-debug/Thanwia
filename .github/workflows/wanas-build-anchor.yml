@@ -1013,6 +1013,42 @@ jobs:
           fi
           echo "Wanas engagement and admin growth patches applied"
 
+      - name: Final Wanas profile query sanitizer
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots=[Path('app'),Path('src')]
+          changed=0
+          pat=re.compile(r"(\\.select\\(\\s*)(['\"\\x60])(.*?)(\\2)", re.S)
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts:
+                      continue
+                  try: old=p.read_text()
+                  except: continue
+                  def fix(m):
+                      body=m.group(3)
+                      if 'avatar_url' not in body: return m.group(0)
+                      body=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\\s*,?\\s*','',body)
+                      body=re.sub(r',\\s*,',',',body).strip(' ,')
+                      if not body: body='id'
+                      return m.group(1)+m.group(2)+body+m.group(4)
+                  new=pat.sub(fix,old)
+                  if new!=old:
+                      p.write_text(new); changed+=1
+          print('Final avatar_url select sanitizer changed',changed,'files')
+          PY
+          echo 'Remaining literal avatar_url in Supabase select projections:'
+          grep -RInE "\\.select\\([^)]*avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 22/' android/app/build.gradle || true
+          fi
+
       - name: Prebuild Android
         working-directory: app
         env:
