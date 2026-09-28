@@ -1177,6 +1177,18 @@ jobs:
           fi
           echo 'Thanwia profile compatibility verified: no avatar_url source reference remains'
 
+      - name: Final zero-avatar_url build gate
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          echo "Scanning final mobile source for any avatar_url dependency..."
+          if grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null; then
+            echo "ERROR: avatar_url still exists in bundled mobile source"
+            exit 1
+          fi
+          echo "PASS: no avatar_url reference remains in final mobile source"
+
       - name: Package complete Wanas project source
         shell: bash
         run: |
