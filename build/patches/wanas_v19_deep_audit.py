@@ -49,14 +49,17 @@ function Small({icon,onPress,danger}:{icon:string;onPress:()=>void;danger?:boole
 admin=ROOT/'admin.tsx'
 if admin.exists():
     s=admin.read_text()
-    old="const [pr,pm,sp,lg,se,ar,as,aq,ag,cr]=results;\n              const _pc=results.slice(10); setPaymentMethods(_pc[0]?.data||[]); setPaymentOrders(_pc[1]?.data||[]); setRoomSettings(_pc[2]?.data||[]); setFeatureFlags(_pc[3]?.data||[]);"
     new="""const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;
     setPaymentMethods(pmt.data||[]);
     setPaymentOrders(orders.data||[]);
     setRoomSettings(rooms.data||[]);
     setFeatureFlags(flags.data||[]);"""
-    s=s.replace(old,new)
-    s=re.sub(r"const \[pr,pm,sp,lg,se,ar,as,aq,ag,cr\]=results;\s*const _pc=results\.slice\(10\);[^\n]*",new,s)
+    pattern=r"const \[pr,pm,sp,lg,se,ar,as,[^\]]+\]=results;\s*const _pc=results\.slice\(10\);[^\n]*"
+    s,n=re.subn(pattern,new,s,count=1)
+    if n==0:
+        anchor="    setProfiles((pr.data||[]) as Profile[]);"
+        if anchor in s:
+            s=s.replace(anchor,new+"\n"+anchor,1)
     s=s.replace("loadData();","load();")
     admin.write_text(s)
 
