@@ -1216,28 +1216,34 @@ jobs:
           set -e
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('app/admin.tsx')
           s=p.read_text()
-          new="""const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;
-          setPaymentMethods(pmt.data||[]);
-          setPaymentOrders(orders.data||[]);
-          setRoomSettings(rooms.data||[]);
-          setFeatureFlags(flags.data||[]);"""
-          pat=r"const \[pr,pm,sp,lg,se,ar,as,[^\]]+\]=results;\s*const _pc=results\.slice\(10\);[^\n]*"
-          s,n=re.subn(pat,new,s,count=1)
-          if n==0 and "const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;" not in s:
-              anchor="    setProfiles((pr.data||[]) as Profile[]);"
-              if anchor in s: s=s.replace(anchor,new+"\n"+anchor,1)
+          lines=s.splitlines()
+          out=[]
+          replaced=False
+          i=0
+          while i < len(lines):
+              if 'const _pc=results.slice(10)' in lines[i]:
+                  if out and 'const [pr,pm,sp,lg,se,ar,as' in out[-1]:
+                      out[-1]="    const [pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr]=results;"
+                  out.append("    setPaymentMethods(pmt.data||[]);")
+                  out.append("    setPaymentOrders(orders.data||[]);")
+                  out.append("    setRoomSettings(rooms.data||[]);")
+                  out.append("    setFeatureFlags(flags.data||[]);")
+                  replaced=True
+                  i+=1
+                  continue
+              out.append(lines[i])
+              i+=1
+          s="\n".join(out)+"\n"
           s=s.replace("loadData();","load();")
           p.write_text(s)
-          print("admin runtime mapping repaired",n)
+          print("admin mapping replaced:",replaced)
+          if not replaced:
+              raise SystemExit("stale admin mapping was not found")
           PY
-          if grep -n "const _pc=results.slice(10)" app/admin.tsx; then
-            echo "ERROR: stale admin result mapping remains"
-            exit 1
-          fi
-          grep -n "const \[pr,pm,sp,lg,se,ar,as,pmt,orders,rooms,flags,acs,grants,aq,ag,cr\]=results" admin.tsx
+          ! grep -q "const _pc=results.slice(10)" app/admin.tsx
+          grep -q "setPaymentMethods(pmt.data||[])" app/admin.tsx
           echo "Final admin runtime mapping PASS"
 
       - name: Package complete Wanas project source
