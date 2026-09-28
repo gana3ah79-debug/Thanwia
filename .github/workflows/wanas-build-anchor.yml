@@ -1086,6 +1086,39 @@ jobs:
           echo '=== avatar_url references after hard sanitizer ==='
           grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null || true
 
+      - name: Final Wanas avatar compatibility cleanup
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          changed=0
+          for root in (Path('app'), Path('src')):
+              if not root.exists(): continue
+              for p in root.rglob('*'):
+                  if p.suffix not in {'.ts','.tsx','.js','.jsx'} or 'node_modules' in p.parts or 'android' in p.parts: continue
+                  try: old=p.read_text()
+                  except: continue
+                  new=old
+                  def fields(m):
+                      q,body=m.group(1),m.group(2)
+                      body=re.sub(r'(?<![A-Za-z0-9_])avatar_url(?![A-Za-z0-9_])\s*,?\s*','',body)
+                      body=re.sub(r',\s*,+',',',body).strip(' ,')
+                      return q+(body or 'id')+q
+                  new=re.sub(r"(['\"])([^'\"]*avatar_url[^'\"]*)\1",fields,new)
+                  new=re.sub(r"(?:['\"]avatar_url['\"]|\bavatar_url)\s*:\s*[^,}\n]+,?",'',new)
+                  new=new.replace('.avatar_url','.avatar')
+                  if new!=old:
+                      p.write_text(new); changed+=1
+          print('Final avatar compatibility cleanup changed',changed,'files')
+          PY
+          echo '=== FAIL-FAST: no avatar_url in executable app/src source ==='
+          if grep -RIn "avatar_url" app src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' 2>/dev/null; then
+            echo 'ERROR: avatar_url remains in runtime source'; exit 1
+          fi
+          echo 'avatar_url runtime references: none'
       - name: Prebuild Android
         working-directory: app
         env:
