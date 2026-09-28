@@ -1,5 +1,6 @@
 name: Wanas APK Builder
 # Control-center/payment/room rebuild trigger
+# 2026-09-28 final profile-screen rebuild: eliminate avatar_url runtime dependency
 # V2 control-center rebuild: cash/InstaPay, room tools, feature flags, moderation controls
 on:
   push:
