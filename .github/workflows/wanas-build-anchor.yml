@@ -1065,13 +1065,15 @@ jobs:
           python3 ../build/wanas_deep_audit.py
           echo "Wanas V19 deep audit fixes applied and static gates passed"
 
-      - name: Apply Wanas V18 room UI and mic control center
+      - name: Verify Wanas room controls
         working-directory: app
         shell: bash
         run: |
           set -e
-          python3 ../build/patches/wanas_v18_rooms_ui.py
-          echo "Wanas V18 room UI, room discovery filters, mic queue and host control center applied"
+          test -f src/components/RoomControlCenter.tsx
+          grep -q "RoomControlCenter" "app/rooms/[id].tsx"
+          grep -q "micQueue" "app/rooms/[id].tsx"
+          echo "Room control center and mic queue verified"
 
       - name: Repair malformed friends Avatar prop
         working-directory: app
