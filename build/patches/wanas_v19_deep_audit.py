@@ -1,6 +1,6 @@
 from pathlib import Path
 import re,sys
-ROOT=Path('.')
+ROOT=Path('app')
 
 room=ROOT/'rooms/[id].tsx'
 if room.exists():
@@ -95,7 +95,7 @@ audit=Path('../build/wanas_deep_audit.py')
 audit.parent.mkdir(parents=True,exist_ok=True)
 audit.write_text(r'''from pathlib import Path
 import re,sys
-files=[p for base in (Path('.'),Path('src')) if base.exists() for p in base.rglob('*') if p.suffix in {'.ts','.tsx','.js','.jsx'} and 'node_modules' not in p.parts and 'android' not in p.parts]
+files=[p for base in (Path('app'),Path('src')) if base.exists() for p in base.rglob('*') if p.suffix in {'.ts','.tsx','.js','.jsx'} and 'node_modules' not in p.parts and 'android' not in p.parts]
 errors=[]
 # Final runtime cleanup: older admin patches referenced a callback named loadData, while this screen exposes load.
 for p in files:
@@ -106,7 +106,7 @@ for p in files:
 for p in files:
     s=p.read_text(errors='ignore')
     if 'loadData();' in s: errors.append(f'{p}: unresolved loadData()')
-room=Path('rooms/[id].tsx')
+room=Path('app/rooms/[id].tsx')
 if room.exists():
     s=room.read_text()
     for token in ['moderateRoom','hand_raised','RoomControlCenter']:
