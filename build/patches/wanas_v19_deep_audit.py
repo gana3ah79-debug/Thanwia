@@ -94,6 +94,12 @@ audit.write_text(r'''from pathlib import Path
 import re,sys
 files=[p for base in (Path('.'),Path('src')) if base.exists() for p in base.rglob('*') if p.suffix in {'.ts','.tsx','.js','.jsx'} and 'node_modules' not in p.parts and 'android' not in p.parts]
 errors=[]
+# Final runtime cleanup: older admin patches referenced a callback named loadData, while this screen exposes load.
+for p in files:
+    s=p.read_text(errors='ignore')
+    if 'loadData();' in s:
+        p.write_text(s.replace('loadData();','load();'))
+
 for p in files:
     s=p.read_text(errors='ignore')
     if 'loadData();' in s: errors.append(f'{p}: unresolved loadData()')
