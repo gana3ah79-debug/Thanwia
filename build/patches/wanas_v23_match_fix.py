@@ -76,3 +76,5 @@ manifest = {
 }
 Path('/tmp/wanas-v23-final.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
 print(json.dumps(manifest, ensure_ascii=False))
+
+# Wanas NEO pipeline integration
