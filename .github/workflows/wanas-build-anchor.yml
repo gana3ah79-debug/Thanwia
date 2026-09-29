@@ -1295,7 +1295,13 @@ jobs:
           import json
           from pathlib import Path
           p=Path('app.json')
-          data=json.loads(p.read_text())
+          raw=p.read_text()
+          try:
+              data=json.loads(raw)
+          except json.JSONDecodeError:
+              decoder=json.JSONDecoder()
+              data,_=decoder.raw_decode(raw.lstrip())
+              print("Recovered first JSON object from malformed app.json")
           data.setdefault('expo',{})
           data['expo']['version']='1.0.25'
           data['expo'].setdefault('android',{})
