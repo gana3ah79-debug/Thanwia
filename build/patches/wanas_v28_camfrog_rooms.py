@@ -62,7 +62,7 @@ if room.exists():
   # insert immediately after first ScrollView/content container marker, avoiding hook-order issues
   render_marker="{isHost ? <RoomControlCenter"
   if render_marker in s:
-   s=s.replace(render_marker,"<WanasCamfrogStage people={people} room={room} isHost={isHost} onModerate={(uid,a)=>void moderate(uid,a)} onGift={()=>setGiftOpen?.(true)} onOpenMembers={()=>{}} onRequestMic={requestMic}/>\n        "+render_marker,1)
+   s=s.replace(render_marker,"<WanasCamfrogStage people={people} room={room} isHost={isHost} onModerate={(uid,a)=>void moderate(uid,a)} onGift={()=>{}} onOpenMembers={()=>{}} onRequestMic={requestMic}/>\n        "+render_marker,1)
   else:
    # fallback: insert before GiftSheet usage
    gift_marker="<GiftSheet"
