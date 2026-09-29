@@ -1332,7 +1332,7 @@ jobs:
           data['expo']['android']['versionCode']=26
           data['expo'].setdefault('extra',{})
           data['expo']['extra']['wanasBuildId']='V26-ADMIN-COMMAND-CENTER-2026-09-29'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
           test -f app/admin-center.tsx
           grep -q 'WANAS • ADMIN COMMAND CENTER' app/admin-center.tsx
