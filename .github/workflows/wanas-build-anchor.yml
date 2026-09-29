@@ -113,8 +113,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          echo "EXPO_PUBLIC_SUPABASE_URL=https://aenuzbaqskhyqwatrggg.supabase.co" >> "$GITHUB_ENV"
-          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_URL=https://dpruooqxkfdesxzavzpv.supabase.co" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_RPyk4wzsp0LFYF4Bf4MBEA_s_UBd8R-" >> "$GITHUB_ENV"
           echo "Wanas Supabase environment configured for the mobile bundle"
 
       - name: Finalize Wanas auth persistence and route safety
@@ -129,8 +129,8 @@ jobs:
           import 'react-native-url-polyfill/auto';
           import { createClient } from '@supabase/supabase-js';
 
-          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
-          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+          export const SUPABASE_URL = 'https://dpruooqxkfdesxzavzpv.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_RPyk4wzsp0LFYF4Bf4MBEA_s_UBd8R-';
 
           export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: {
@@ -376,8 +376,8 @@ jobs:
           import 'react-native-url-polyfill/auto';
           import { createClient } from '@supabase/supabase-js';
 
-          export const SUPABASE_URL = 'https://aenuzbaqskhyqwatrggg.supabase.co';
-          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_WAI1Bf-pzTvfLXvjnbKCXw_vLo7Ce_2';
+          export const SUPABASE_URL = 'https://dpruooqxkfdesxzavzpv.supabase.co';
+          export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_RPyk4wzsp0LFYF4Bf4MBEA_s_UBd8R-';
 
           const wanasFetch: typeof fetch = async (input:any, init?:any) => {
             try {
