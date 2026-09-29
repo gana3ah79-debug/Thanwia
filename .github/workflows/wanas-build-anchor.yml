@@ -1278,7 +1278,7 @@ jobs:
           data['expo']['android']['versionCode']=24
           data['expo'].setdefault('extra',{})
           data['expo']['extra']['wanasBuildId']='V24-MATCH-AUTH-FIX-2026-09-29'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
           grep -q '"versionCode": 24' app.json
           grep -q "V24-MATCH-AUTH-FIX-2026-09-29" app.json
@@ -1308,7 +1308,7 @@ jobs:
           data['expo']['android']['versionCode']=25
           data['expo'].setdefault('extra',{})
           data['expo']['extra']['wanasBuildId']='V25-FULL-APP-UPGRADE-2026-09-29'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
           grep -q '"versionCode": 25' app.json
           grep -q 'V25-FULL-APP-UPGRADE-2026-09-29' app.json
