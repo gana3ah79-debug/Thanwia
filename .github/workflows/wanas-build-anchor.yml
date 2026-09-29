@@ -1340,44 +1340,11 @@ jobs:
           grep -q 'V26-ADMIN-COMMAND-CENTER-2026-09-29' app.json
           echo "V26 admin command center applied"
 
-      - name: Wanas V27 full control upgrade
+      - name: Wanas V27 stability and admin release
         working-directory: app
         shell: bash
         run: |
           set -e
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('app/admin-center.tsx')
-          s=p.read_text()
-          s=s.replace('WANAS • ADMIN COMMAND CENTER','WANAS • ADMIN V27').replace('لوحة التحكم المركزية','مركز التحكم الذكي')
-          # Add direct user moderation and payment rejection actions to the existing V26 center.
-          anchor="const users=d.users.filter((u:any)=>"
-          helpers="""const userFlag=async(u:any,field:string,value:boolean)=>{const{error}=await supabase.from('profiles').update({[field]:value}).eq('id',u.id);if(error)Alert.alert('خطأ',error.message);else{await audit('user_'+field,{id:u.id,value});load()}};
- const rejectPayment=async(o:any)=>{const{error}=await supabase.from('payment_orders').update({status:'rejected',updated_at:new Date().toISOString()}).eq('id',o.id);if(error)Alert.alert('خطأ',error.message);else{await audit('reject_payment',{id:o.id});load()}};
- """
-          if "const userFlag=" not in s:
-              s=s.replace(anchor,helpers+anchor,1)
-          # Replace users panel with actionable moderation controls.
-          start=s.find("{tab==='users'&&")
-          end=s.find("{tab==='payments'&&",start)
-          if start>=0 and end>start:
-              block="""{tab==='users'&&<><View style={s.card}><Text style={s.h}>إدارة المستخدمين</Text><TextInput value={search} onChangeText={setSearch} placeholder="بحث بالاسم أو المعرف" placeholderTextColor={C.muted} style={s.input}/></View>{users.slice(0,60).map((u:any)=><View style={s.card} key={u.id}><Text style={s.user}>{u.display_name||u.username||u.id}</Text><Text style={s.log}>{u.id} • {u.is_paid?'مدفوع':'مجاني'} • {u.is_banned?'محظور':'نشط'}</Text><View style={s.row}><TouchableOpacity style={s.quick} onPress={()=>userFlag(u,'is_paid',!u.is_paid)}><Text style={s.w}>{u.is_paid?'إلغاء المدفوع':'تفعيل مدفوع'}</Text></TouchableOpacity><TouchableOpacity style={s.quick} onPress={()=>userFlag(u,'is_banned',!u.is_banned)}><Text style={s.w}>{u.is_banned?'إلغاء الحظر':'حظر'}</Text></TouchableOpacity></View></View>)}</>}"""
-              s=s[:start]+block+s[end:]
-          # Add reject button to pending payments.
-          s=s.replace("<TouchableOpacity style={s.primary} onPress={()=>approve(o)}><Text style={s.w}>اعتماد الدفع</Text></TouchableOpacity>","<View style={s.row}><TouchableOpacity style={s.quick} onPress={()=>approve(o)}><Text style={s.w}>اعتماد</Text></TouchableOpacity><TouchableOpacity style={s.quick} onPress={()=>rejectPayment(o)}><Text style={s.w}>رفض</Text></TouchableOpacity></View>",1)
-          # Upgrade the home quick-control text.
-          s=s.replace('الدفع • الغرف • مفاتيح الميزات • الدعم • سجل الإدارة متاحة من الشريط.','المستخدمون • الحظر • العضويات المدفوعة • اعتماد/رفض المدفوعات • الغرف • الميزات • الدعم • سجل الإدارة.')
-          p.write_text(s)
-          # Add a small V27 hub card to the main home screen.
-          home=Path('app/(tabs)/home.tsx')
-          if home.exists():
-              h=home.read_text()
-              if 'مركز التحكم V27' not in h:
-                  h=h.replace('</ScrollView>','<View style={{marginTop:12,padding:14,borderRadius:16,backgroundColor:"#121A2B"}}><Text style={{color:"#23D5AB",fontWeight:"900",textAlign:"right"}}>WANAS V27</Text><Text style={{color:"#F7F9FF",fontSize:16,fontWeight:"900",textAlign:"right",marginTop:5}}>مركز اجتماعي أسرع</Text><Text style={{color:"#8E9AB2",textAlign:"right",marginTop:4}}>غرف • أصدقاء • Messenger • Buzz • ألعاب AI</Text></View></ScrollView>',1)
-                  home.write_text(h)
-          print("V27 control and home upgrade applied")
-          PY
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -1388,13 +1355,14 @@ jobs:
           data['expo'].setdefault('android',{})
           data['expo']['android']['versionCode']=27
           data['expo'].setdefault('extra',{})
-          data['expo']['extra']['wanasBuildId']='V27-FULL-CONTROL-UPGRADE-2026-09-29'
+          data['expo']['extra']['wanasBuildId']='V27-STABLE-ADMIN-2026-09-29'
           p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
+          test -f app/admin-center.tsx
+          grep -q 'WANAS • ADMIN COMMAND CENTER' app/admin-center.tsx
           grep -q '"versionCode": 27' app.json
-          grep -q 'V27-FULL-CONTROL-UPGRADE-2026-09-29' app.json
-          grep -q 'WANAS V27' app/admin-center.tsx
-          echo "V27 full control upgrade applied"
+          grep -q 'V27-STABLE-ADMIN-2026-09-29' app.json
+          echo "V27 stable admin release applied"
 
       - name: Package complete Wanas project source
         shell: bash
