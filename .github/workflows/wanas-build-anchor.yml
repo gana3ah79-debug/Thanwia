@@ -1261,6 +1261,17 @@ jobs:
           grep -q '"versionCode": 22' app.json
           grep -q "V22-RUNTIME-BACKEND-2026-09-29" app.json
 
+      - name: Wanas V23 matchmaking fix and release gate
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v23_match_fix.py
+          echo "V23 matchmaking fix applied"
+          grep -q '"versionCode": 23' app.json
+          grep -q "V23-MATCH-RPC-FIX-2026-09-29" app.json
+          test -s /tmp/wanas-v23-final.json
+
       - name: Package complete Wanas project source
         shell: bash
         run: |
