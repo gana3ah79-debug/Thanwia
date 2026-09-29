@@ -1367,7 +1367,7 @@ jobs:
           grep -q 'V28-CAMFROG-ROOMS-ADMIN-2026-09-29' app.json
           echo "V28 Camfrog room/admin controls applied"
           
-      - name: Wanas V27 stability and admin release
+      - name: Wanas V28 final release identity
         working-directory: app
         shell: bash
         run: |
@@ -1378,18 +1378,18 @@ jobs:
           p=Path('app.json')
           data=json.loads(p.read_text())
           data.setdefault('expo',{})
-          data['expo']['version']='1.0.27'
+          data['expo']['version']='1.0.28'
           data['expo'].setdefault('android',{})
-          data['expo']['android']['versionCode']=27
+          data['expo']['android']['versionCode']=28
           data['expo'].setdefault('extra',{})
-          data['expo']['extra']['wanasBuildId']='V27-STABLE-ADMIN-2026-09-29'
+          data['expo']['extra']['wanasBuildId']='V28-CAMFROG-ROOMS-ADMIN-2026-09-29'
           p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
           test -f app/admin-center.tsx
           grep -q 'WANAS • ADMIN COMMAND CENTER' app/admin-center.tsx
-          grep -q '"versionCode": 27' app.json
-          grep -q 'V27-STABLE-ADMIN-2026-09-29' app.json
-          echo "V27 stable admin release applied"
+          grep -q '"versionCode": 28' app.json
+          grep -q 'V28-CAMFROG-ROOMS-ADMIN-2026-09-29' app.json
+          echo "V28 final release identity applied"
 
       - name: Package complete Wanas project source
         shell: bash
