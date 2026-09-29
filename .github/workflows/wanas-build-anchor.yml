@@ -1285,30 +1285,6 @@ jobs:
           grep -q "from('match_queue')" src/lib/supabaseApi.ts
           echo "V24 matchmaking/auth fix applied"
 
-      - name: Wanas V24 matchmaking fallback and release gate
-        working-directory: app
-        shell: bash
-        run: |
-          set -e
-          python3 ../build/patches/wanas_v24_match_fallback.py
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('app.json')
-          data=json.loads(p.read_text())
-          data.setdefault('expo',{})
-          data['expo']['version']='1.0.24'
-          data['expo'].setdefault('android',{})
-          data['expo']['android']['versionCode']=24
-          data['expo'].setdefault('extra',{})
-          data['expo']['extra']['wanasBuildId']='V24-MATCH-RPC-FALLBACK-2026-09-29'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
-          PY
-          grep -q '"versionCode": 24' app.json
-          grep -q 'V24-MATCH-RPC-FALLBACK-2026-09-29' app.json
-          grep -q "from('match_queue')" src/lib/supabaseApi.ts
-          echo "V24 matchmaking fallback applied"
-
       - name: Package complete Wanas project source
         shell: bash
         run: |
