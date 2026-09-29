@@ -76,5 +76,9 @@ manifest = {
 }
 Path('/tmp/wanas-v23-final.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
 print(json.dumps(manifest, ensure_ascii=False))
-
-# Wanas NEO pipeline integration
+# Apply the new Wanas NEO visual system as the final source transformation.
+import runpy
+neo_path = root.parent / 'build' / 'patches' / 'wanas_neo_redesign.py'
+if neo_path.exists():
+    runpy.run_path(str(neo_path), run_name='__wanas_neo__')
+    print('Wanas NEO redesign applied.')
