@@ -1340,6 +1340,33 @@ jobs:
           grep -q 'V26-ADMIN-COMMAND-CENTER-2026-09-29' app.json
           echo "V26 admin command center applied"
 
+      - name: Wanas V28 Camfrog rooms and live admin controls
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v28_camfrog_rooms.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('app.json')
+          data=json.loads(p.read_text())
+          data.setdefault('expo',{})
+          data['expo']['version']='1.0.28'
+          data['expo'].setdefault('android',{})
+          data['expo']['android']['versionCode']=28
+          data['expo'].setdefault('extra',{})
+          data['expo']['extra']['wanasBuildId']='V28-CAMFROG-ROOMS-ADMIN-2026-09-29'
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
+          PY
+          test -f src/components/WanasCamfrogStage.tsx
+          test -f app/admin-center.tsx
+          grep -q 'WanasCamfrogStage' 'app/rooms/[id].tsx'
+          grep -q 'WANAS • ROOM CONTROL' app/admin-center.tsx
+          grep -q '"versionCode": 28' app.json
+          grep -q 'V28-CAMFROG-ROOMS-ADMIN-2026-09-29' app.json
+          echo "V28 Camfrog room/admin controls applied"
+          
       - name: Wanas V27 stability and admin release
         working-directory: app
         shell: bash
