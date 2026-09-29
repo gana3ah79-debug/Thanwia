@@ -1230,6 +1230,16 @@ jobs:
           grep -q "grants.data" app/admin.tsx
           echo "Final admin runtime mapping PASS"
 
+      - name: Wanas V20 canonical finalization and source truth gate
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v20_finalize.py
+          cp /tmp/wanas-final-manifest.json /tmp/wanas-final-manifest.build.json
+          echo "=== FINAL WANAS SOURCE TRUTH ==="
+          cat /tmp/wanas-final-manifest.build.json
+          test -s /tmp/wanas-final-manifest.build.json
       - name: Package complete Wanas project source
         shell: bash
         run: |
