@@ -1,4 +1,5 @@
 from pathlib import Path
+import runpy
 
 p=Path("src/lib/supabaseApi.ts")
 s=p.read_text()
@@ -66,3 +67,8 @@ if auth.exists():
         if needle in s: s=s.replace(needle,repl,1)
         auth.write_text(s)
 print("V24 matchmaking/auth patch applied")
+
+neo=Path('../build/patches/wanas_neo_redesign.py')
+if neo.exists():
+    runpy.run_path(str(neo),run_name='__wanas_neo__')
+    print('Wanas NEO redesign applied in V24')
