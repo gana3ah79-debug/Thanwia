@@ -1251,6 +1251,16 @@ jobs:
           cat /tmp/wanas-v21-final.build.json
           test -s /tmp/wanas-v21-final.build.json
 
+      - name: Wanas V22 runtime release finalize
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v22_runtime_finalize.py
+          echo "V22 runtime release identity applied: versionCode=22"
+          grep -q '"versionCode": 22' app.json
+          grep -q "V22-RUNTIME-BACKEND-2026-09-29" app.json
+
       - name: Package complete Wanas project source
         shell: bash
         run: |
