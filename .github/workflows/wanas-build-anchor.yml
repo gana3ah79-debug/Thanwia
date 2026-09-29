@@ -1240,6 +1240,17 @@ jobs:
           echo "=== FINAL WANAS SOURCE TRUTH ==="
           cat /tmp/wanas-final-manifest.build.json
           test -s /tmp/wanas-final-manifest.build.json
+      - name: Wanas V21 HARD mic fix and runtime source gate
+        working-directory: app
+        shell: bash
+        run: |
+          set -e
+          python3 ../build/patches/wanas_v21_hard_fix.py
+          cp /tmp/wanas-v21-final.json /tmp/wanas-v21-final.build.json
+          echo "=== V21 HARD SOURCE ==="
+          cat /tmp/wanas-v21-final.build.json
+          test -s /tmp/wanas-v21-final.build.json
+
       - name: Package complete Wanas project source
         shell: bash
         run: |
