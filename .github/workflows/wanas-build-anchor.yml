@@ -1390,6 +1390,54 @@ jobs:
           data['expo'].setdefault('extra',{})
           data['expo']['extra']['wanasBuildId']='V72-NATIVE-ROOMS-2026-10-02'
           p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
+
+          pkg=Path('package.json')
+          pdata=json.loads(pkg.read_text())
+          deps=pdata.setdefault('dependencies',{})
+          deps['react-native-webrtc']='^124.0.4'
+          pkg.write_text(json.dumps(pdata,ensure_ascii=False,indent=2)+'\\n')
+
+          h=Path('src/hooks/useRoomVoice.ts')
+          h.parent.mkdir(parents=True,exist_ok=True)
+          h.write_text(r'''import { useCallback, useEffect, useRef, useState } from 'react';
+import { mediaDevices, RTCPeerConnection, MediaStream } from 'react-native-webrtc';
+
+export function useRoomVoice(roomId?: string, enabled=false) {
+  const [state,setState]=useState({enabled:false,muted:true,connected:false,error:null as string|null});
+  const streamRef=useRef<MediaStream|null>(null);
+  const pcRef=useRef<RTCPeerConnection|null>(null);
+
+  const stop=useCallback(()=>{
+    try { streamRef.current?.getTracks().forEach(t=>t.stop()); } catch {}
+    try { pcRef.current?.close(); } catch {}
+    streamRef.current=null; pcRef.current=null;
+    setState(s=>({...s,enabled:false,connected:false,muted:true}));
+  },[]);
+
+  const start=useCallback(async()=>{
+    if(!roomId || streamRef.current)return;
+    try {
+      const stream=await mediaDevices.getUserMedia({audio:true,video:false});
+      streamRef.current=stream;
+      const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+      pcRef.current=pc;
+      stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+      setState({enabled:true,muted:false,connected:true,error:null});
+    } catch(e:any) {
+      setState(s=>({...s,error:String(e?.message||e),connected:false}));
+    }
+  },[roomId]);
+
+  const setMuted=useCallback((muted:boolean)=>{
+    streamRef.current?.getAudioTracks().forEach(t=>{t.enabled=!muted});
+    setState(s=>({...s,muted}));
+  },[]);
+
+  useEffect(()=>{ if(enabled) start(); else stop(); return stop; },[enabled,roomId]);
+  return {...state,start,stop,setMuted,stream:streamRef.current};
+}
+''')
+          print('V72 native WebRTC room source materialized')
           PY
           grep -q '"versionCode": 72' app.json
           grep -q 'V72-NATIVE-ROOMS-2026-10-02' app.json
