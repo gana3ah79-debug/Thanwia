@@ -1373,7 +1373,7 @@ jobs:
           grep -q 'V28-CAMFROG-ROOMS-ADMIN-2026-09-29' app.json
           echo "V28 Camfrog room/admin controls applied"
           
-      - name: Wanas V28 final release identity
+      - name: Wanas V72 Native Room release identity
         working-directory: app
         shell: bash
         run: |
@@ -1384,18 +1384,18 @@ jobs:
           p=Path('app.json')
           data=json.loads(p.read_text())
           data.setdefault('expo',{})
-          data['expo']['version']='1.0.28'
+          data['expo']['version']='1.0.72'
           data['expo'].setdefault('android',{})
-          data['expo']['android']['versionCode']=28
+          data['expo']['android']['versionCode']=72
           data['expo'].setdefault('extra',{})
-          data['expo']['extra']['wanasBuildId']='V28-CAMFROG-ROOMS-ADMIN-2026-09-29'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          data['expo']['extra']['wanasBuildId']='V72-NATIVE-ROOMS-2026-10-02'
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\\n')
           PY
-          test -f app/admin-center.tsx
-          grep -q 'WANAS • ADMIN COMMAND CENTER' app/admin-center.tsx
-          grep -q '"versionCode": 28' app.json
-          grep -q 'V28-CAMFROG-ROOMS-ADMIN-2026-09-29' app.json
-          echo "V28 final release identity applied"
+          grep -q '"versionCode": 72' app.json
+          grep -q 'V72-NATIVE-ROOMS-2026-10-02' app.json
+          test -f src/hooks/useRoomVoice.ts
+          grep -q 'react-native-webrtc' package.json
+          echo "V72 Native Room release identity and WebRTC gate PASS"
 
       - name: Package complete Wanas project source
         shell: bash
