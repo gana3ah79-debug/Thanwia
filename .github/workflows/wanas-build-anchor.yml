@@ -1439,3 +1439,5 @@ jobs:
           name: wanas-release-apk
           path: app/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+# V72 native APK build trigger 2026-10-02T00:00Z
